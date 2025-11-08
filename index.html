@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Flow AI Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              'primary': '#0D1117', // Main background
+              'secondary': '#161B22', // Panel background
+              'accent': 'rgba(34, 41, 51, 0.5)', // Glass background
+              'border-color': 'rgba(255, 255, 255, 0.1)',
+              'text-primary': '#E6EDF3',
+              'text-secondary': '#B0BAC6',
+              'highlight': '#58A6FF', // A clear, accessible blue
+
+              // Neon Palette
+              'neon-purple': '#9C5EFF',
+              'neon-blue': '#00C6FF',
+              'base-bg': '#151515',
+
+              // Brand colors
+              'brand-teal': '#33C5B1',
+              'brand-blue': '#4E95F2',
+              'brand-purple': '#A371F7',
+              'brand-pink': '#E96ED4',
+              'brand-green': '#52D186',
+              'brand-yellow': '#F2C94C',
+              'brand-red': '#EB5757',
+            },
+            borderRadius: {
+                'xl': '1rem',
+                '2xl': '1.5rem',
+                '3xl': '2rem',
+            },
+            boxShadow: {
+                'soft-glow': '0 0 25px -5px rgba(88, 166, 255, 0.15)',
+                'soft-glow-neon': '0 0 40px -10px rgba(156, 94, 255, 0.3)',
+                'inner-soft': 'inset 0 1px 2px 0 rgba(255, 255, 255, 0.05)',
+            },
+            backdropBlur: {
+              'xl': '20px',
+              '2xl': '32px',
+            },
+            keyframes: {
+              subtleAurora: {
+                '0%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
+                '100%': { backgroundPosition: '0% 50%' },
+              },
+              pulseGlow: {
+                '0%, 100%': { boxShadow: '0 0 15px -5px rgba(156, 94, 255, 0.2)' },
+                '50%': { boxShadow: '0 0 30px -5px rgba(156, 94, 255, 0.5)' },
+              },
+            },
+            animation: {
+              subtleAurora: 'subtleAurora 30s ease infinite',
+              pulseGlow: 'pulseGlow 4s ease-in-out infinite',
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^11.3.19"
+  }
+}
+</script>
+</head>
+  <body class="bg-base-bg text-text-primary font-sans antialiased">
+    <div class="fixed inset-0 -z-10 bg-base-bg">
+        <div class="absolute inset-0 bg-[linear-gradient(145deg,rgba(156,94,255,0.1)_0%,rgba(0,198,255,0.1)_50%,rgba(82,209,134,0.1)_100%)] bg-[length:200%_200%] animate-subtleAurora"></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
