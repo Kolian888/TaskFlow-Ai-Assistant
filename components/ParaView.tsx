@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Project, Board, Note, Task } from '../types';
-import { LayersIcon, KanbanIcon, DocumentDuplicateIcon, CheckCircleIcon, ChevronLeftIcon } from './Icons';
+import { Project, Board, Note, Task, Attachment } from '../types';
+import { LayersIcon, KanbanIcon, DocumentDuplicateIcon, CheckCircleIcon, ChevronLeftIcon, PaperclipIcon } from './Icons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ParaViewProps {
@@ -9,9 +9,10 @@ interface ParaViewProps {
     notes: Note[];
     tasks: Task[];
     isMobile: boolean;
+    allAttachments: Attachment[];
 }
 
-const ParaView: React.FC<ParaViewProps> = ({ projects, boards, notes, tasks, isMobile }) => {
+const ParaView: React.FC<ParaViewProps> = ({ projects, boards, notes, tasks, isMobile, allAttachments }) => {
     const [viewMode, setViewMode] = useState<'active' | 'archive'>('active');
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -91,7 +92,17 @@ const ParaView: React.FC<ParaViewProps> = ({ projects, boards, notes, tasks, isM
                     {selectedBoardId && !selectedProjectId && (
                          <motion.div key="projects" initial={{ x: '100%' }} animate={{ x: '0%' }} exit={{ x: '-100%' }} transition={{ ease: 'easeInOut' }} className="absolute inset-0">
                             <ParaColumn title={boards.find(b=>b.id===selectedBoardId)?.name || 'Проекты'} icon={KanbanIcon} onBack={() => setSelectedBoardId(null)} emptyText="Нет проектов в этой сфере.">
-                                 {displayedProjects.map(p => <motion.button key={p.id} variants={listItemVariants} onClick={() => setSelectedProjectId(p.id)} className="w-full text-left p-3 rounded-lg bg-accent text-text-primary hover:bg-white/5">{p.emoji} {p.name}</motion.button>)}
+                                 {displayedProjects.map(p => (
+                                    <motion.button key={p.id} variants={listItemVariants} onClick={() => setSelectedProjectId(p.id)} className="w-full text-left p-3 rounded-lg bg-accent text-text-primary hover:bg-white/5 flex items-center justify-between">
+                                        <span>{p.emoji} {p.name}</span>
+                                        {(p.attachmentIds?.length || 0) > 0 && (
+                                            <span className="flex items-center gap-1 text-xs text-text-secondary">
+                                                <PaperclipIcon className="w-4 h-4" />
+                                                {p.attachmentIds?.length}
+                                            </span>
+                                        )}
+                                    </motion.button>
+                                 ))}
                             </ParaColumn>
                         </motion.div>
                     )}
@@ -138,7 +149,16 @@ const ParaView: React.FC<ParaViewProps> = ({ projects, boards, notes, tasks, isM
                                 onClick={() => { setSelectedProjectId(p.id); setSelectedTaskId(null); }}
                                 className={`w-full text-left p-3 rounded-lg transition-colors flex flex-col gap-2 ${selectedProjectId === p.id ? 'bg-highlight/10 ring-1 ring-highlight' : 'bg-accent hover:bg-white/5'}`}
                             >
-                                <span className="font-semibold text-text-primary">{p.emoji} {p.name}</span>
+                                <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-text-primary">{p.emoji} {p.name}</span>
+                                    {(p.attachmentIds?.length || 0) > 0 && (
+                                        <span className="flex items-center gap-1 text-xs text-text-secondary">
+                                            <PaperclipIcon className="w-4 h-4" />
+                                            {p.attachmentIds?.length}
+                                        </span>
+                                    )}
+                                </div>
+
                                 {projectTasks.length > 0 && (
                                      <div className="w-full text-xs text-text-secondary">
                                         <div className="flex justify-between items-center mb-0.5">

@@ -142,7 +142,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
     const getAttachmentIcon = (att: Attachment) => {
         switch (att.type) {
             case 'link': return <LinkIcon className="w-4 h-4 text-highlight" />;
-            case 'image': return <PhotoIcon className="w-4 h-4 text-brand-green" />;
+            case 'image': return <img src={att.url} alt={att.name} className="w-4 h-4 rounded-sm object-cover" />;
             case 'file': return <DocumentTextIcon className="w-4 h-4 text-text-secondary" />;
         }
     };

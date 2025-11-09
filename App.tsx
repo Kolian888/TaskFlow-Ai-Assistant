@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
 import Header from './components/Header';
@@ -27,7 +28,7 @@ import QuestsView from './components/QuestsView';
 import { RANKS } from './ranks';
 import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import CharacterSwitchModal from './components/CharacterSwitchModal';
-import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon, MenuIcon, CalendarDaysIcon, MindMapIcon } from './components/Icons';
+import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon, MenuIcon, CalendarDaysIcon, MindMapIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from './components/Icons';
 import HabitTracker from './components/HabitTracker';
 import BoardEditModal from './components/BoardEditModal';
 import ParaView from './components/ParaView';
@@ -50,6 +51,62 @@ const APP_DATA_KEY = 'taskflow_app_data_v1';
 
 // FIX: Define a type for sidebar widget keys to prevent 'unknown' index type error.
 type SidebarWidgetKey = 'projects' | 'form' | 'pet' | 'quests' | 'notes' | 'pomodoro' | 'notifications';
+
+const ImageGalleryModal: React.FC<{ images: Attachment[]; startIndex: number; onClose: () => void; }> = ({ images, startIndex, onClose }) => {
+    const [currentIndex, setCurrentIndex] = useState(startIndex);
+
+    const nextImage = () => setCurrentIndex(prev => (prev + 1) % images.length);
+    const prevImage = () => setCurrentIndex(prev => (prev - 1 + images.length) % images.length);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'ArrowLeft') prevImage();
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [images.length]);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-primary/90 backdrop-blur-xl z-[100] flex items-center justify-center"
+            onClick={onClose}
+        >
+            <button onClick={onClose} className="absolute top-4 right-4 text-white p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors">
+                <XIcon className="w-8 h-8"/>
+            </button>
+            
+            {images.length > 1 && (
+                 <>
+                    <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/30 hover:bg-black/50 transition-colors">
+                        <ChevronLeftIcon className="w-8 h-8"/>
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/30 hover:bg-black/50 transition-colors">
+                        <ChevronRightIcon className="w-8 h-8"/>
+                    </button>
+                </>
+            )}
+
+            <AnimatePresence mode="wait">
+                <motion.img
+                    key={currentIndex}
+                    src={images[currentIndex].url}
+                    alt={images[currentIndex].name}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                    className="max-w-[90vw] max-h-[85vh] object-contain"
+                    onClick={e => e.stopPropagation()}
+                />
+            </AnimatePresence>
+        </motion.div>
+    );
+};
 
 const MobileMenu: React.FC<{
     isOpen: boolean;
@@ -132,6 +189,7 @@ const App: React.FC = () => {
     
     const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'project' | 'board', id: string, name: string } | null>(null);
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+    const [projectEditModalTab, setProjectEditModalTab] = useState<'details' | 'attachments'>('details');
     const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
     const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
     const [boardToEdit, setBoardToEdit] = useState<Board | 'new' | null>(null);
@@ -161,6 +219,8 @@ const App: React.FC = () => {
     const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [aiContext, setAiContext] = useState<any>(null);
+
+    const [galleryConfig, setGalleryConfig] = useState<{ isOpen: boolean; images: Attachment[]; startIndex: number }>({ isOpen: false, images: [], startIndex: 0 });
     
     const [settings, setSettings] = useState<Settings>(() => {
         const defaultSettings: Settings = {
@@ -217,6 +277,18 @@ const App: React.FC = () => {
     const [isListening, setIsListening] = useState(false);
     const [voiceError, setVoiceError] = useState<string | null>(null);
     const recognitionRef = useRef<any>(null);
+    const speechRecognitionDependenciesRef = useRef<any>({});
+
+
+    const handleOpenGallery = useCallback((images: Attachment[], startIndex: number) => {
+        setGalleryConfig({ isOpen: true, images, startIndex });
+    }, []);
+    const handleCloseGallery = () => setGalleryConfig({ isOpen: false, images: [], startIndex: 0 });
+    
+    const handleOpenProjectEdit = (project: Project, tab: 'details' | 'attachments' = 'details') => {
+        setProjectToEdit(project);
+        setProjectEditModalTab(tab);
+    };
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', settings.theme);
@@ -677,72 +749,23 @@ const App: React.FC = () => {
         setAttachments(prev => [...prev, newAttachment]);
     
         if (entity.type === 'project') {
-            setProjects(prevProjects => {
-                const newProjects = prevProjects.map(p => 
-                    p.id === entity.id 
-                        ? { ...p, attachmentIds: [...(p.attachmentIds || []), newAttachment.id] } 
-                        : p
-                );
-                
-                if (projectToEdit && projectToEdit.id === entity.id) {
-                    const updatedProjectInModal = newProjects.find(p => p.id === entity.id);
-                    if (updatedProjectInModal) {
-                        setProjectToEdit(updatedProjectInModal);
-                    }
-                }
-                return newProjects;
-            });
+            setProjects(prev => prev.map(p => p.id === entity.id ? { ...p, attachmentIds: [...(p.attachmentIds || []), newAttachment.id] } : p));
+            setProjectToEdit(current => current && current.id === entity.id ? { ...current, attachmentIds: [...(current.attachmentIds || []), newAttachment.id] } : current);
         } else { // entity.type === 'task'
-            setTasks(prevTasks => {
-                const newTasks = prevTasks.map(t => 
-                    t.id === entity.id 
-                        ? { ...t, attachmentIds: [...(t.attachmentIds || []), newAttachment.id] } 
-                        : t
-                );
-                if (taskToEdit && taskToEdit.id === entity.id) {
-                    const updatedTaskInModal = newTasks.find(t => t.id === entity.id);
-                    if (updatedTaskInModal) {
-                        setTaskToEdit(updatedTaskInModal);
-                    }
-                }
-                return newTasks;
-            });
+            setTasks(prev => prev.map(t => t.id === entity.id ? { ...t, attachmentIds: [...(t.attachmentIds || []), newAttachment.id] } : t));
+            setTaskToEdit(current => current && current.id === entity.id ? { ...current, attachmentIds: [...(current.attachmentIds || []), newAttachment.id] } : current);
         }
-    }, [projectToEdit, taskToEdit]);
+    }, []);
 
     const handleUnlinkAttachment = useCallback((attachmentId: string, from: { type: 'project' | 'task', id: string }) => {
         if (from.type === 'project') {
-            setProjects(prevProjects => {
-                const newProjects = prevProjects.map(p => 
-                    p.id === from.id 
-                        ? { ...p, attachmentIds: p.attachmentIds?.filter(id => id !== attachmentId) } 
-                        : p
-                );
-                if (projectToEdit && projectToEdit.id === from.id) {
-                    const updatedProjectInModal = newProjects.find(p => p.id === from.id);
-                    if (updatedProjectInModal) {
-                        setProjectToEdit(updatedProjectInModal);
-                    }
-                }
-                return newProjects;
-            });
+            setProjects(prev => prev.map(p => p.id === from.id ? { ...p, attachmentIds: p.attachmentIds?.filter(id => id !== attachmentId) } : p));
+            setProjectToEdit(current => current && current.id === from.id ? { ...current, attachmentIds: current.attachmentIds?.filter(id => id !== attachmentId) } : current);
         } else { // from.type === 'task'
-            setTasks(prevTasks => {
-                const newTasks = prevTasks.map(t => 
-                    t.id === from.id 
-                        ? { ...t, attachmentIds: t.attachmentIds?.filter(id => id !== attachmentId) } 
-                        : t
-                );
-                if (taskToEdit && taskToEdit.id === from.id) {
-                    const updatedTaskInModal = newTasks.find(t => t.id === from.id);
-                    if (updatedTaskInModal) {
-                        setTaskToEdit(updatedTaskInModal);
-                    }
-                }
-                return newTasks;
-            });
+            setTasks(prev => prev.map(t => t.id === from.id ? { ...t, attachmentIds: t.attachmentIds?.filter(id => id !== attachmentId) } : t));
+            setTaskToEdit(current => current && current.id === from.id ? { ...current, attachmentIds: current.attachmentIds?.filter(id => id !== attachmentId) } : current);
         }
-    }, [projectToEdit, taskToEdit]);
+    }, []);
 
     const handleAddBoard = useCallback((name: string) => {
         const newBoard: Board = { id: crypto.randomUUID(), name, columns: ['Бэклог', 'В процессе', 'Готово'] };
@@ -1083,6 +1106,30 @@ const App: React.FC = () => {
         setIsSearchOpen(false);
     }, [tasks, projects]);
 
+    useEffect(() => {
+        speechRecognitionDependenciesRef.current = {
+            tasks,
+            projects,
+            boards,
+            activeProjectId,
+            handleAddTask,
+            speak,
+            handleUpdateTaskStatus,
+            handleDeleteTask,
+            handleStartPomodoro,
+            handleCancelPomodoro,
+            setIsPomodoroActive,
+            setActiveView,
+            setIsAiAssistantOpen,
+            setIsSettingsOpen,
+        };
+    }, [
+        tasks, projects, boards, activeProjectId,
+        handleAddTask, speak, handleUpdateTaskStatus, handleDeleteTask,
+        handleStartPomodoro, handleCancelPomodoro, setIsPomodoroActive,
+        setActiveView, setIsAiAssistantOpen, setIsSettingsOpen
+    ]);
+
     const handleVoiceInput = useCallback(() => {
         if (isListening) {
             recognitionRef.current?.stop();
@@ -1125,6 +1172,12 @@ const App: React.FC = () => {
         };
         
         recognition.onresult = (event: any) => {
+            const {
+                tasks, projects, boards, activeProjectId,
+                handleAddTask, speak, handleUpdateTaskStatus, handleDeleteTask,
+                handleStartPomodoro, handleCancelPomodoro, setIsPomodoroActive,
+                setActiveView, setIsAiAssistantOpen, setIsSettingsOpen
+            } = speechRecognitionDependenciesRef.current;
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
 
             const findTaskByName = (name: string) => tasks.find(t => t.title.toLowerCase().includes(name));
@@ -1278,23 +1331,7 @@ const App: React.FC = () => {
         };
 
         recognition.start();
-    }, [
-        isListening,
-        tasks,
-        projects,
-        boards,
-        activeProjectId,
-        handleAddTask,
-        speak,
-        handleUpdateTaskStatus,
-        handleDeleteTask,
-        handleStartPomodoro,
-        handleCancelPomodoro,
-        setIsPomodoroActive,
-        setActiveView,
-        setIsAiAssistantOpen,
-        setIsSettingsOpen
-    ]);
+    }, [isListening]);
 
     const MainContent = () => {
         switch (activeView) {
@@ -1343,7 +1380,7 @@ const App: React.FC = () => {
                       />
                     </>
                 );
-            case 'para': return <ParaView projects={projects} boards={boards} notes={notes} tasks={tasks} isMobile={isMobile} />;
+            case 'para': return <ParaView projects={projects} boards={boards} notes={notes} tasks={tasks} isMobile={isMobile} allAttachments={attachments}/>;
             case 'stats': return <Statistics tasks={tasks} projects={projects} playerStats={playerStats} onGenerateReport={async () => "Report generated"} />;
             case 'achievements': return <Achievements playerStats={playerStats} onFeed={handleFeedPet} onPlay={handlePlayWithPet} onBathe={handleBathePet} onToggleSleep={handleTogglePetSleep} onPet={() => true} onOpenStore={() => setIsStoreOpen(true)} onSwitchRequest={() => setIsCharacterSwitchOpen(true)} />;
             case 'library': return <FileLibrary attachments={attachments} projects={projects} tasks={tasks} onDeleteAttachment={() => {}} />;
@@ -1375,14 +1412,14 @@ const App: React.FC = () => {
     
 // FIX: Replaced `JSX.Element` with `React.ReactElement` to resolve "Cannot find namespace 'JSX'" error.
     const sidebarWidgets: Record<SidebarWidgetKey, { title: string, component: React.ReactElement }> = useMemo(() => ({
-        projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={setProjectToEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} /> },
+        projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={handleOpenProjectEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} /> },
         form: { title: 'Добавить задачу', component: <TaskForm onAddTask={(taskData) => handleAddTask(taskData as any)} projects={projects} activeProjectId={activeProjectId} /> },
         pet: { title: 'Питомец', component: <FocusPet stats={playerStats} /> },
         quests: { title: 'Ежедневные квесты', component: <DailyQuests quests={dailyQuests} /> },
         notes: { title: 'Быстрые Заметки', component: <Notes notes={notes} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} /> },
         pomodoro: { title: 'Помодоро', component: <PomodoroTimer activeTask={activePomodoroTask} onComplete={handlePomodoroComplete} onCancel={handleCancelPomodoro} pomodoroSettings={pomodoroSettings} onSettingsChange={setPomodoroSettings} isActive={isPomodoroActive} setIsActive={setIsPomodoroActive} timeRemaining={pomodoroTimeRemaining} setTimeRemaining={setPomodoroTimeRemaining} /> },
         notifications: { title: 'Уведомления', component: <Notifications permission={notificationPermission} onRequestPermission={handleRequestNotificationPermission} tasksDueToday={tasksDueToday} /> }
-    }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, setProjectToEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects]);
+    }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, handleOpenProjectEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects]);
 
     const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph', 'calendar'].includes(activeView);
 
@@ -1513,16 +1550,27 @@ const App: React.FC = () => {
                 activeProjectId={activeProjectId}
             />
             {itemToDelete && <ConfirmationModal title={`Подтвердите удаление`} message={`Вы уверены, что хотите удалить "${itemToDelete.name}"? Это действие нельзя будет отменить.`} onConfirm={handleConfirmDelete} onCancel={() => setItemToDelete(null)} confirmText="Удалить" confirmClass="bg-brand-red text-white" />}
-            {projectToEdit && <ProjectEditModal project={projectToEdit} onUpdate={handleUpdateProject} onCancel={() => setProjectToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} />}
-            {taskToEdit && <TaskEditModal task={taskToEdit} onUpdate={(task) => handleUpdateTask(task)} onCancel={() => setTaskToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} />}
+            {projectToEdit && <ProjectEditModal project={projectToEdit} initialTab={projectEditModalTab} onUpdate={handleUpdateProject} onCancel={() => setProjectToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} onOpenGallery={handleOpenGallery} />}
+            {taskToEdit && <TaskEditModal task={taskToEdit} onUpdate={(task) => handleUpdateTask(task)} onCancel={() => setTaskToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} onOpenGallery={handleOpenGallery} />}
             {noteToEdit && <NoteEditModal note={noteToEdit} onUpdate={handleUpdateNote} onCancel={() => setNoteToEdit(null)} noteFolders={noteFolders} projects={projects} tasks={tasks} />}
             {boardToEdit && <BoardEditModal isOpen={!!boardToEdit} board={boardToEdit === 'new' ? null : boardToEdit} onClose={() => setBoardToEdit(null)} onSave={(name, boardId) => { if (boardId) { handleUpdateBoard(boardId, name); } else { handleAddBoard(name); } }} />}
-            
+            {galleryConfig.isOpen && <ImageGalleryModal images={galleryConfig.images} startIndex={galleryConfig.startIndex} onClose={handleCloseGallery} />}
+
             <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
             <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
             <CharacterSwitchModal isOpen={isCharacterSwitchOpen} onClose={() => setIsCharacterSwitchOpen(false)} onSwitch={handleCharacterSwitch} unlockedTypes={playerStats.unlockedCharacterTypes} activeType={playerStats.characterType} />
             <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} playerStats={playerStats} onUnlockColor={handleUnlockPetColor} onSelectColor={handleSelectPetColor} onUnlockCharacterType={handleUnlockCharacterType} />
             
+            <motion.button
+                onClick={() => setIsAiAssistantOpen(true)}
+                className="fixed bottom-36 lg:bottom-8 right-4 w-16 h-16 rounded-full flex items-center justify-center z-40 bg-gradient-to-br from-neon-purple to-neon-blue text-white shadow-lg shadow-neon-purple/30"
+                aria-label="Открыть AI ассистента"
+                whileHover={{ scale: 1.1, rotate: [0, 15, -10, 0] }}
+                transition={{ duration: 0.3 }}
+                whileTap={{ scale: 0.9 }}
+            >
+                <SparklesIcon className="w-8 h-8" />
+            </motion.button>
             <motion.button
                 onClick={handleVoiceInput}
                 className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg lg:hidden"

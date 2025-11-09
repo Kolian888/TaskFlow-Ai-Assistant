@@ -5,14 +5,16 @@ import EmojiPickerModal from './EmojiPickerModal';
 
 interface ProjectEditModalProps {
   project: Project;
+  initialTab?: 'details' | 'attachments';
   onUpdate: (updatedProject: Project) => void;
   onCancel: () => void;
   onAddAttachment: (data: { name: string; type: AttachmentType; url: string; }, entity: { type: 'project'; id: string; }) => void;
   onUnlinkAttachment: (attachmentId: string, from: { type: 'project'; id: string; }) => void;
   allAttachments: Attachment[];
+  onOpenGallery: (images: Attachment[], startIndex: number) => void;
 }
 
-const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, onUpdate, onCancel, onAddAttachment, onUnlinkAttachment, allAttachments }) => {
+const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, initialTab = 'details', onUpdate, onCancel, onAddAttachment, onUnlinkAttachment, allAttachments, onOpenGallery }) => {
   const [name, setName] = useState(project.name);
   const [color, setColor] = useState(project.color || '#A371F7');
   const [emoji, setEmoji] = useState(project.emoji || '');
@@ -20,7 +22,7 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, onUpdate, 
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [newLink, setNewLink] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'attachments'>('details');
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
     setName(project.name);
@@ -28,9 +30,15 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, onUpdate, 
     setEmoji(project.emoji || '');
     setTags(project.tags?.join(', ') || '');
   }, [project]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, project.id]);
   
   const projectAttachments = useMemo(() => {
-      return allAttachments.filter(att => project.attachmentIds?.includes(att.id));
+      return (project.attachmentIds || [])
+          .map(id => allAttachments.find(att => att.id === id))
+          .filter((att): att is Attachment => Boolean(att));
   }, [allAttachments, project.attachmentIds]);
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -130,13 +138,26 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, onUpdate, 
                 <div className="">
                      <h3 className="text-lg font-semibold text-text-secondary mb-3 flex items-center gap-2"><PaperclipIcon className="w-5 h-5" />Вложения</h3>
                      <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
-                        {projectAttachments.map(att => (
-                            <div key={att.id} className="flex items-center gap-3 bg-accent/50 p-2.5 rounded-lg">
-                                {getAttachmentIcon(att)}
-                                <a href={att.url} target="_blank" rel="noopener noreferrer" download={att.type === 'file' ? att.name : undefined} className="flex-grow text-sm truncate hover:underline text-text-primary">{att.name}</a>
-                                <button onClick={() => onUnlinkAttachment(att.id, { type: 'project', id: project.id })} className="p-1 text-text-secondary hover:text-brand-red rounded-full hover:bg-brand-red/10"><XIcon className="w-4 h-4"/></button>
-                            </div>
-                        ))}
+                        {projectAttachments.map(att => {
+                            if (att.type === 'image') {
+                                const imageAttachments = projectAttachments.filter(a => a.type === 'image');
+                                const imageIndex = imageAttachments.findIndex(a => a.id === att.id);
+                                return (
+                                    <div key={att.id} className="flex items-center gap-3 bg-accent/50 p-2.5 rounded-lg">
+                                        {getAttachmentIcon(att)}
+                                        <button onClick={() => onOpenGallery(imageAttachments, imageIndex)} className="flex-grow text-sm truncate hover:underline text-text-primary text-left">{att.name}</button>
+                                        <button onClick={() => onUnlinkAttachment(att.id, { type: 'project', id: project.id })} className="p-1 text-text-secondary hover:text-brand-red rounded-full hover:bg-brand-red/10"><XIcon className="w-4 h-4"/></button>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div key={att.id} className="flex items-center gap-3 bg-accent/50 p-2.5 rounded-lg">
+                                    {getAttachmentIcon(att)}
+                                    <a href={att.url} target="_blank" rel="noopener noreferrer" download={att.type === 'file' ? att.name : undefined} className="flex-grow text-sm truncate hover:underline text-text-primary">{att.name}</a>
+                                    <button onClick={() => onUnlinkAttachment(att.id, { type: 'project', id: project.id })} className="p-1 text-text-secondary hover:text-brand-red rounded-full hover:bg-brand-red/10"><XIcon className="w-4 h-4"/></button>
+                                </div>
+                            );
+                        })}
                         {projectAttachments.length === 0 && <p className="text-sm text-gray-500 text-center py-2">Нет вложений</p>}
                      </div>
                      <div className="mt-4 space-y-3">

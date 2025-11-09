@@ -11,7 +11,7 @@ interface ProjectManagerProps {
     activeProjectId: string | null;
     onAddProject: (name: string, color: string, emoji: string, tags: string[], boardId: string) => void;
     onSelectProject: (id: string) => void;
-    onEditRequest: (project: Project) => void;
+    onEditRequest: (project: Project, tab?: 'details' | 'attachments') => void;
     onDeleteRequest: (project: Project) => void;
     onDuplicateRequest: (projectId: string) => void;
     allTags: string[];
@@ -191,7 +191,6 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
                     const projectTasks = tasks.filter(t => t.projectId === project.id);
                     const completedTasks = projectTasks.filter(t => t.status === 'Готово').length;
                     const progress = projectTasks.length > 0 ? (completedTasks / projectTasks.length) * 100 : 0;
-                    const projectAttachments = (project.attachmentIds || []).map(id => allAttachments.find(att => att.id === id)).filter((att): att is Attachment => Boolean(att));
                     
                     return (
                         <li key={project.id} className="group flex items-center gap-1">
@@ -217,10 +216,6 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
                                             </div>
                                         )}
                                     </div>
-                                    <span 
-                                        className="w-3 h-3 rounded-full flex-shrink-0 border border-white/20 z-10" 
-                                        style={{ backgroundColor: project.color || '#a0aec0' }}
-                                    ></span>
                                 </div>
                                 
                                 {projectTasks.length > 0 && (
@@ -238,19 +233,6 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
                                     </div>
                                 )}
 
-                                {projectAttachments.length > 0 && (
-                                    <div className="flex items-center gap-2 mt-2 pl-12 z-10">
-                                        {projectAttachments.slice(0, 5).map(att => (
-                                            <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" title={att.name} className="block p-1 bg-accent/50 rounded-md hover:bg-accent">
-                                                {getAttachmentIcon(att)}
-                                            </a>
-                                        ))}
-                                        {projectAttachments.length > 5 && (
-                                            <span className="text-xs text-text-secondary">+ {projectAttachments.length - 5}</span>
-                                        )}
-                                    </div>
-                                )}
-
                                 {(aiAssessments[project.id] || (generatingAssessments.has(project.id) && projectTasks.length > 0)) && (
                                     <div className="mt-2 pl-12 z-10">
                                         <div className="flex items-start gap-1.5 p-2 bg-primary/40 rounded-md">
@@ -265,6 +247,15 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
                                 )}
                             </button>
                              <div className="flex items-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {(project.attachmentIds?.length || 0) > 0 && (
+                                    <button 
+                                        onClick={() => onEditRequest(project, 'attachments')}
+                                        className="p-2 text-text-secondary hover:text-white rounded-lg hover:bg-accent transition-colors"
+                                        aria-label={`Вложения проекта ${project.name}`}
+                                    >
+                                        <PaperclipIcon className="w-4 h-4" />
+                                    </button>
+                                )}
                                 <button 
                                     onClick={() => onEditRequest(project)}
                                     className="p-2 text-text-secondary hover:text-white rounded-lg hover:bg-accent transition-colors"

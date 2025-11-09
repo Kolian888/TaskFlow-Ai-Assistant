@@ -10,9 +10,10 @@ interface TaskEditModalProps {
   onAddAttachment: (data: { name: string; type: AttachmentType; url: string; }, entity: { type: 'task'; id: string; }) => void;
   onUnlinkAttachment: (attachmentId: string, from: { type: 'task'; id: string; }) => void;
   allAttachments: Attachment[];
+  onOpenGallery: (images: Attachment[], startIndex: number) => void;
 }
 
-const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, onUpdate, onCancel, onAddAttachment, onUnlinkAttachment, allAttachments }) => {
+const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, onUpdate, onCancel, onAddAttachment, onUnlinkAttachment, allAttachments, onOpenGallery }) => {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [pomodoros, setPomodoros] = useState(task.pomodorosEstimated);
@@ -39,7 +40,9 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, onUpdate, onCancel,
   }, [task]);
 
   const taskAttachments = useMemo(() => {
-      return allAttachments.filter(att => task.attachmentIds?.includes(att.id));
+      return (task.attachmentIds || [])
+        .map(id => allAttachments.find(att => att.id === id))
+        .filter((att): att is Attachment => Boolean(att));
   }, [allAttachments, task.attachmentIds]);
 
   const handleAddSubtask = () => {
@@ -190,13 +193,26 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({ task, onUpdate, onCancel,
             <div className="">
                 <h3 className="text-lg font-semibold text-text-secondary mb-3 flex items-center gap-2"><PaperclipIcon className="w-5 h-5" />Вложения</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
-                    {taskAttachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-3 bg-accent/50 p-2.5 rounded-lg">
-                            {getAttachmentIcon(att)}
-                            <a href={att.url} target="_blank" rel="noopener noreferrer" download={att.type === 'file' ? att.name : undefined} className="flex-grow text-sm truncate hover:underline">{att.name}</a>
-                            <button onClick={() => onUnlinkAttachment(att.id, { type: 'task', id: task.id })} className="p-1 text-text-secondary hover:text-brand-red rounded-full hover:bg-brand-red/10"><XIcon className="w-4 h-4"/></button>
-                        </div>
-                    ))}
+                    {taskAttachments.map(att => {
+                         if (att.type === 'image') {
+                            const imageAttachments = taskAttachments.filter(a => a.type === 'image');
+                            const imageIndex = imageAttachments.findIndex(a => a.id === att.id);
+                            return (
+                                <div key={att.id} className="flex items-center gap-3 bg-accent/50 p-2.5 rounded-lg">
+                                    {getAttachmentIcon(att)}
+                                    <button onClick={() => onOpenGallery(imageAttachments, imageIndex)} className="flex-grow text-sm truncate hover:underline text-left">{att.name}</button>
+                                    <button onClick={() => onUnlinkAttachment(att.id, { type: 'task', id: task.id })} className="p-1 text-text-secondary hover:text-brand-red rounded-full hover:bg-brand-red/10"><XIcon className="w-4 h-4"/></button>
+                                </div>
+                            );
+                        }
+                        return (
+                            <div key={att.id} className="flex items-center gap-3 bg-accent/50 p-2.5 rounded-lg">
+                                {getAttachmentIcon(att)}
+                                <a href={att.url} target="_blank" rel="noopener noreferrer" download={att.type === 'file' ? att.name : undefined} className="flex-grow text-sm truncate hover:underline">{att.name}</a>
+                                <button onClick={() => onUnlinkAttachment(att.id, { type: 'task', id: task.id })} className="p-1 text-text-secondary hover:text-brand-red rounded-full hover:bg-brand-red/10"><XIcon className="w-4 h-4"/></button>
+                            </div>
+                        );
+                    })}
                     {taskAttachments.length === 0 && <p className="text-sm text-gray-500 text-center py-2">Нет вложений</p>}
                 </div>
                 <div className="mt-4 space-y-3">
