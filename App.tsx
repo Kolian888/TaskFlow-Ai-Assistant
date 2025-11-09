@@ -1,14 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
 import Header from './components/Header';
@@ -1040,48 +1029,13 @@ const App: React.FC = () => {
         setIsSearchOpen(false);
     }, [tasks, projects]);
 
-    const speechRecognitionDependenciesRef = useRef({
-        tasks,
-        projects,
-        boards,
-        activeProjectId,
-        handleAddTask,
-        speak,
-        handleUpdateTaskStatus,
-        handleDeleteTask,
-        handleStartPomodoro,
-        handleCancelPomodoro,
-        setIsPomodoroActive,
-        setActiveView,
-        setIsAiAssistantOpen,
-        setIsSettingsOpen
-    });
+    const handleVoiceInput = useCallback(() => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+            setIsListening(false);
+            return;
+        }
 
-    useEffect(() => {
-        speechRecognitionDependenciesRef.current = {
-            tasks,
-            projects,
-            boards,
-            activeProjectId,
-            handleAddTask,
-            speak,
-            handleUpdateTaskStatus,
-            handleDeleteTask,
-            handleStartPomodoro,
-            handleCancelPomodoro,
-            setIsPomodoroActive,
-            setActiveView,
-            setIsAiAssistantOpen,
-            setIsSettingsOpen
-        };
-    }, [
-        tasks, projects, boards, activeProjectId,
-        handleAddTask, speak, handleUpdateTaskStatus, handleDeleteTask,
-        handleStartPomodoro, handleCancelPomodoro, setIsPomodoroActive,
-        setActiveView, setIsAiAssistantOpen, setIsSettingsOpen
-    ]);
-
-    useEffect(() => {
         // @ts-ignore
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
@@ -1091,6 +1045,7 @@ const App: React.FC = () => {
 
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
+
         recognition.continuous = false;
         recognition.lang = 'ru-RU';
         recognition.interimResults = false;
@@ -1116,13 +1071,6 @@ const App: React.FC = () => {
         };
         
         recognition.onresult = (event: any) => {
-            const {
-                tasks, projects, boards, activeProjectId,
-                handleAddTask, speak, handleUpdateTaskStatus, handleDeleteTask,
-                handleStartPomodoro, handleCancelPomodoro, setIsPomodoroActive,
-                setActiveView, setIsAiAssistantOpen, setIsSettingsOpen
-            } = speechRecognitionDependenciesRef.current;
-            
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
 
             const findTaskByName = (name: string) => tasks.find(t => t.title.toLowerCase().includes(name));
@@ -1274,15 +1222,25 @@ const App: React.FC = () => {
                 }
             }
         };
-    }, []);
 
-    const handleVoiceInput = () => {
-        if (isListening) {
-            recognitionRef.current?.stop();
-        } else {
-            recognitionRef.current?.start();
-        }
-    };
+        recognition.start();
+    }, [
+        isListening,
+        tasks,
+        projects,
+        boards,
+        activeProjectId,
+        handleAddTask,
+        speak,
+        handleUpdateTaskStatus,
+        handleDeleteTask,
+        handleStartPomodoro,
+        handleCancelPomodoro,
+        setIsPomodoroActive,
+        setActiveView,
+        setIsAiAssistantOpen,
+        setIsSettingsOpen
+    ]);
 
     const MainContent = () => {
         switch (activeView) {

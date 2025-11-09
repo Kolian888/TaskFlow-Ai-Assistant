@@ -138,6 +138,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
     const leftSwipeOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
     const rightSwipeScale = useTransform(x, [0, SWIPE_THRESHOLD], [0.5, 1.2]);
     const leftSwipeScale = useTransform(x, [-SWIPE_THRESHOLD, 0], [1.2, 0.5]);
+    
+    const getAttachmentIcon = (att: Attachment) => {
+        switch (att.type) {
+            case 'link': return <LinkIcon className="w-4 h-4 text-highlight" />;
+            case 'image': return <PhotoIcon className="w-4 h-4 text-brand-green" />;
+            case 'file': return <DocumentTextIcon className="w-4 h-4 text-text-secondary" />;
+        }
+    };
 
 
     const cardContent = (
@@ -355,10 +363,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
           <div className="flex justify-between items-center text-sm">
             <div className="flex items-center gap-4 text-text-secondary">
                 {taskAttachments.length > 0 && (
-                  <div className="flex items-center gap-1.5" title={`${taskAttachments.length} вложений`}>
-                      <PaperclipIcon className="w-4 h-4" />
-                      <span>{taskAttachments.length}</span>
-                  </div>
+                    <div className="flex items-center gap-1.5">
+                        {taskAttachments.slice(0, 3).map(att => (
+                            <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" title={att.name} className="block p-1 bg-primary/50 rounded-md hover:bg-accent">
+                                {getAttachmentIcon(att)}
+                            </a>
+                        ))}
+                        {taskAttachments.length > 3 && (
+                            <span className="text-xs text-text-secondary">+ {taskAttachments.length - 3}</span>
+                        )}
+                    </div>
                 )}
                 {dueDateInfo && (
                   <div className={`flex items-center gap-1.5 font-semibold ${dueDateInfo.color}`}>
