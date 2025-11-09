@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Task, Subtask, priorityStyles, Attachment } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
-import { PlayIcon, CalendarIcon, PaperclipIcon, DotsVerticalIcon, InformationCircleIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon, LinkIcon, PhotoIcon, DocumentTextIcon, ChevronDownIcon, MicrophoneIcon } from './Icons';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { PlayIcon, CalendarIcon, PaperclipIcon, DotsVerticalIcon, InformationCircleIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon, LinkIcon, PhotoIcon, DocumentTextIcon, ChevronDownIcon, MicrophoneIcon, CheckIcon } from './Icons';
 
 interface TaskCardProps {
   task: Task;
@@ -119,11 +119,140 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
     };
 
 
+    // Mobile swipe logic
+    const x = useMotionValue(0);
+    const SWIPE_THRESHOLD = 80;
+
+    const onDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number, y: number } }) => {
+        if (info.offset.x > SWIPE_THRESHOLD) { // Swiped right
+            const doneStatus = boardColumns[boardColumns.length - 1];
+            if (doneStatus && task.status !== doneStatus) {
+                onUpdateTask({ ...task, status: doneStatus });
+            }
+        } else if (info.offset.x < -SWIPE_THRESHOLD) { // Swiped left
+            onStartPomodoro();
+        }
+    };
+
+    const rightSwipeOpacity = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
+    const leftSwipeOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
+    const rightSwipeScale = useTransform(x, [0, SWIPE_THRESHOLD], [0.5, 1.2]);
+    const leftSwipeScale = useTransform(x, [-SWIPE_THRESHOLD, 0], [1.2, 0.5]);
+
+
+    const cardContent = (
+      <>
+          {coverImage && (
+              <div className="relative z-10 -m-3 md:-m-4 mb-3 md:mb-4">
+                  <img src={coverImage.url} alt={coverImage.name} className="w-full h-24 md:h-32 object-cover rounded-t-xl md:rounded-t-2xl" />
+              </div>
+          )}
+          <div className="relative z-10 flex flex-col gap-1.5 md:gap-3">
+              <div className="flex justify-between items-start gap-2">
+                  <h4 className="font-bold text-text-primary text-sm md:text-base leading-tight">
+                      <span className="opacity-70 mr-1.5">{task.emoji || '💡'}</span>
+                      {task.title}
+                  </h4>
+                  {task.priority && (
+                    <span className={`text-[10px] md:text-xs font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full flex-shrink-0 ${priorityStyle?.bg.replace('/10', '/20')} ${priorityStyle?.text}`}>
+                      {task.priority}
+                    </span>
+                  )}
+              </div>
+
+              {totalSubtasks > 0 && (
+                <div className="hidden md:block space-y-1.5">
+                    <div className="flex justify-between items-center text-xs text-text-secondary">
+                        <span className="font-semibold">Подзадачи</span>
+                        <span className="font-mono">{completedSubtasks}/{totalSubtasks}</span>
+                    </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
+                    {taskAttachments.length > 0 && (
+                      <div className="flex items-center gap-1" title={`${taskAttachments.length} вложений`}>
+                          <PaperclipIcon className="w-3.5 h-3.5" />
+                          <span>{taskAttachments.length}</span>
+                      </div>
+                    )}
+                    {dueDateInfo && (
+                      <div className={`flex items-center gap-1 font-semibold ${dueDateInfo.color}`}>
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        <span>{dueDateInfo.text}</span>
+                      </div>
+                    )}
+                    <div className="font-semibold flex items-center gap-1">
+                      <span>🍓</span>
+                      {task.pomodorosCompleted}/{task.pomodorosEstimated}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button onClick={() => handleMove('left')} disabled={!canMoveLeft} className="w-6 h-6 flex items-center justify-center bg-accent text-text-secondary rounded-md hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" aria-label={`Переместить задачу влево`}>
+                        <ChevronLeftIcon className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleMove('right')} disabled={!canMoveRight} className="w-6 h-6 flex items-center justify-center bg-accent text-text-secondary rounded-md hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" aria-label={`Переместить задачу вправо`}>
+                        <ChevronRightIcon className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => onOpenAiWithContext(task)} className="w-6 h-6 flex items-center justify-center text-text-secondary rounded-md hover:bg-white/10 hover:text-white transition-colors" aria-label={`AI-помощник для ${task.title}`}>
+                        <MicrophoneIcon className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="relative" ref={menuRef}>
+                        <button onClick={() => setIsMenuOpen(prev => !prev)} className="w-6 h-6 flex items-center justify-center text-text-secondary rounded-md hover:bg-white/10 hover:text-white transition-colors" aria-label={`Действия с задачей ${task.title}`}>
+                            <DotsVerticalIcon className="w-3.5 h-3.5" />
+                        </button>
+                        {isMenuOpen && (
+                            <div className="absolute right-0 bottom-full mb-2 w-48 bg-secondary border border-border-color rounded-xl shadow-lg z-20 p-2">
+                                <ul className="text-sm text-text-primary">
+                                    <li><button onClick={() => { onEditRequest(task); setIsMenuOpen(false); }} className="w-full text-left px-3 py-1.5 hover:bg-accent rounded-md">Редактировать</button></li>
+                                    <li><button onClick={() => { onDuplicateTask(); setIsMenuOpen(false); }} className="w-full text-left px-3 py-1.5 hover:bg-accent rounded-md">Дублировать</button></li>
+                                    <div className="h-px bg-border-color my-1"></div>
+                                    <li><button onClick={() => { onDeleteRequest(task); setIsMenuOpen(false); }} className="w-full text-left px-3 py-1.5 hover:bg-brand-red/20 text-brand-red rounded-md">Удалить</button></li>
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+              </div>
+          </div>
+        </>
+    );
+
+    if (isMobile) {
+        return (
+            <div className="relative">
+                <motion.div style={{ opacity: rightSwipeOpacity }} className="absolute inset-0 bg-brand-green rounded-xl flex items-center justify-start pl-6">
+                    <motion.div style={{ scale: rightSwipeScale }}>
+                        <CheckIcon className="w-6 h-6 text-white" />
+                    </motion.div>
+                </motion.div>
+                <motion.div style={{ opacity: leftSwipeOpacity }} className="absolute inset-0 bg-highlight rounded-xl flex items-center justify-end pr-6">
+                    <motion.div style={{ scale: leftSwipeScale }}>
+                        <PlayIcon className="w-6 h-6 text-white" />
+                    </motion.div>
+                </motion.div>
+                <motion.div
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.2}
+                    style={{ x }}
+                    onDragEnd={onDragEnd}
+                    className="relative p-2.5 bg-accent backdrop-blur-xl rounded-xl shadow-soft-glow"
+                >
+                    {cardContent}
+                </motion.div>
+            </div>
+        );
+    }
+
+
   return (
     <div
       draggable={!isMobile}
       onDragStart={() => !isMobile && onDragStart(task.id)}
-      className={`relative p-4 rounded-2xl ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''} transition-all duration-300 shadow-soft-glow group ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
+      className={`relative p-4 rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300 shadow-soft-glow group ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
     >
         {/* Background and Border */}
         <div 
@@ -243,16 +372,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
             </div>
 
             <div className="flex items-center gap-1">
-                {isMobile && (
-                    <>
-                    <button onClick={() => handleMove('left')} disabled={!canMoveLeft} className="w-8 h-8 flex items-center justify-center bg-accent text-text-secondary rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" aria-label={`Переместить задачу влево`}>
-                        <ChevronLeftIcon className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => handleMove('right')} disabled={!canMoveRight} className="w-8 h-8 flex items-center justify-center bg-accent text-text-secondary rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" aria-label={`Переместить задачу вправо`}>
-                        <ChevronRightIcon className="w-5 h-5" />
-                    </button>
-                    </>
-                )}
                 <button onClick={onStartPomodoro} className="w-8 h-8 flex items-center justify-center bg-highlight/20 text-highlight rounded-lg hover:bg-highlight/30 transition-colors" aria-label={`Начать Помодоро для ${task.title}`}><PlayIcon className="w-5 h-5" /></button>
                 
                 <button 

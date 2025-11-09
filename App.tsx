@@ -1353,28 +1353,28 @@ const App: React.FC = () => {
             </main>
             
             {isMobile && (
-                <div className="fixed bottom-0 left-0 right-0 bg-secondary/80 backdrop-blur-xl border-t border-border-color z-40">
+                <div className="fixed bottom-0 left-0 right-0 bg-secondary/80 backdrop-blur-xl border-t border-border-color z-40 h-14">
                     <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-highlight/50 to-transparent"></div>
-                    <div className="grid grid-cols-5 items-center">
+                    <div className="grid grid-cols-5 items-center h-full">
                         {mobileNavItems.slice(0, 2).map(item => (
-                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-1 py-2 h-16 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
+                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
                                 {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
-                                <item.icon className="w-6 h-6" />
-                                <span className="text-[10px] font-medium">{item.label}</span>
+                                <item.icon className="w-5 h-5" />
+                                <span className="text-[9px] font-medium">{item.label}</span>
                             </button>
                         ))}
 
                         <div className="flex justify-center">
-                            <button onClick={() => setIsQuickAddOpen(true)} className="-mt-6 bg-highlight text-primary w-16 h-16 rounded-full shadow-lg shadow-highlight/30 flex items-center justify-center z-50 mx-auto active:scale-90 transition-transform">
-                                <PlusIcon className="w-8 h-8"/>
+                            <button onClick={() => setIsQuickAddOpen(true)} className="-mt-5 bg-highlight text-primary w-14 h-14 rounded-full shadow-lg shadow-highlight/30 flex items-center justify-center z-50 mx-auto active:scale-90 transition-transform">
+                                <PlusIcon className="w-7 h-7"/>
                             </button>
                         </div>
 
                         {mobileNavItems.slice(2, 4).map(item => (
-                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-1 py-2 h-16 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
+                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
                                  {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
-                                <item.icon className="w-6 h-6" />
-                                <span className="text-[10px] font-medium">{item.label}</span>
+                                <item.icon className="w-5 h-5" />
+                                <span className="text-[9px] font-medium">{item.label}</span>
                             </button>
                         ))}
                     </div>
@@ -1442,7 +1442,7 @@ const App: React.FC = () => {
             
             <motion.button
                 onClick={handleVoiceInput}
-                className="fixed bottom-24 right-6 w-16 h-16 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg"
+                className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg"
                 aria-label="Активировать голосовое управление"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -1461,7 +1461,7 @@ const App: React.FC = () => {
                         }}
                     />
                 )}
-                <MicrophoneIcon className="w-8 h-8 relative" />
+                <MicrophoneIcon className="w-7 h-7 relative" />
             </motion.button>
         </div>
     );

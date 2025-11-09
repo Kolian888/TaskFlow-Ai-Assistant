@@ -112,12 +112,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projects, board, onUpd
         <div>
             <div className="relative mb-4">
               <LayoutGroup>
-                <div className="flex space-x-2 overflow-x-auto pb-2 -mx-4 px-4">
+                <div className="flex space-x-2 overflow-x-auto pb-2 -mx-2 px-2">
                     {columns.map(({ status, title }) => (
                         <button
                             key={status}
                             onClick={() => setActiveColumn(status)}
-                            className={`relative px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap transition-colors z-10 ${activeColumn === status ? 'text-primary' : 'text-text-secondary hover:bg-accent'}`}
+                            className={`relative px-3 py-1.5 text-xs font-semibold rounded-full whitespace-nowrap transition-colors z-10 ${activeColumn === status ? 'text-primary' : 'text-text-secondary hover:bg-accent'}`}
                         >
                             {title} ({tasks.filter(t => t.status === status).length})
                             {activeColumn === status && (
@@ -143,7 +143,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projects, board, onUpd
                     transition={{ duration: 0.2 }}
                 >
                     {activeColumn && (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {sortTasks(tasks.filter(task => task.status === activeColumn), sortConfig[activeColumn] || 'default').map(task => {
                                 const taskProject = projects.find(p => p.id === task.projectId);
                                 return <TaskCard key={task.id} task={task} boardColumns={board.columns} onDragStart={() => {}} isDragging={false} onStartPomodoro={() => onStartPomodoro(task)} onDeleteRequest={() => onDeleteRequest(task)} onEditRequest={() => onEditRequest(task)} onUpdateTask={onUpdateTask} onDuplicateTask={() => onDuplicateTask(task.id)} projectColor={taskProject?.color} projectEmoji={taskProject?.emoji} isMobile={isMobile} allAttachments={allAttachments} onOpenAiWithContext={onOpenAiWithContext} />;
