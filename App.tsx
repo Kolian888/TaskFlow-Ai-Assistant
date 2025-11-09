@@ -675,20 +675,74 @@ const App: React.FC = () => {
             createdAt: new Date().toISOString(),
         };
         setAttachments(prev => [...prev, newAttachment]);
+    
         if (entity.type === 'project') {
-            setProjects(prev => prev.map(p => p.id === entity.id ? { ...p, attachmentIds: [...(p.attachmentIds || []), newAttachment.id] } : p));
-        } else {
-            setTasks(prev => prev.map(t => t.id === entity.id ? { ...t, attachmentIds: [...(t.attachmentIds || []), newAttachment.id] } : t));
+            setProjects(prevProjects => {
+                const newProjects = prevProjects.map(p => 
+                    p.id === entity.id 
+                        ? { ...p, attachmentIds: [...(p.attachmentIds || []), newAttachment.id] } 
+                        : p
+                );
+                
+                if (projectToEdit && projectToEdit.id === entity.id) {
+                    const updatedProjectInModal = newProjects.find(p => p.id === entity.id);
+                    if (updatedProjectInModal) {
+                        setProjectToEdit(updatedProjectInModal);
+                    }
+                }
+                return newProjects;
+            });
+        } else { // entity.type === 'task'
+            setTasks(prevTasks => {
+                const newTasks = prevTasks.map(t => 
+                    t.id === entity.id 
+                        ? { ...t, attachmentIds: [...(t.attachmentIds || []), newAttachment.id] } 
+                        : t
+                );
+                if (taskToEdit && taskToEdit.id === entity.id) {
+                    const updatedTaskInModal = newTasks.find(t => t.id === entity.id);
+                    if (updatedTaskInModal) {
+                        setTaskToEdit(updatedTaskInModal);
+                    }
+                }
+                return newTasks;
+            });
         }
-    }, []);
+    }, [projectToEdit, taskToEdit]);
 
     const handleUnlinkAttachment = useCallback((attachmentId: string, from: { type: 'project' | 'task', id: string }) => {
         if (from.type === 'project') {
-            setProjects(prev => prev.map(p => p.id === from.id ? { ...p, attachmentIds: p.attachmentIds?.filter(id => id !== attachmentId) } : p));
-        } else {
-            setTasks(prev => prev.map(t => t.id === from.id ? { ...t, attachmentIds: t.attachmentIds?.filter(id => id !== attachmentId) } : t));
+            setProjects(prevProjects => {
+                const newProjects = prevProjects.map(p => 
+                    p.id === from.id 
+                        ? { ...p, attachmentIds: p.attachmentIds?.filter(id => id !== attachmentId) } 
+                        : p
+                );
+                if (projectToEdit && projectToEdit.id === from.id) {
+                    const updatedProjectInModal = newProjects.find(p => p.id === from.id);
+                    if (updatedProjectInModal) {
+                        setProjectToEdit(updatedProjectInModal);
+                    }
+                }
+                return newProjects;
+            });
+        } else { // from.type === 'task'
+            setTasks(prevTasks => {
+                const newTasks = prevTasks.map(t => 
+                    t.id === from.id 
+                        ? { ...t, attachmentIds: t.attachmentIds?.filter(id => id !== attachmentId) } 
+                        : t
+                );
+                if (taskToEdit && taskToEdit.id === from.id) {
+                    const updatedTaskInModal = newTasks.find(t => t.id === from.id);
+                    if (updatedTaskInModal) {
+                        setTaskToEdit(updatedTaskInModal);
+                    }
+                }
+                return newTasks;
+            });
         }
-    }, []);
+    }, [projectToEdit, taskToEdit]);
 
     const handleAddBoard = useCallback((name: string) => {
         const newBoard: Board = { id: crypto.randomUUID(), name, columns: ['Бэклог', 'В процессе', 'Готово'] };

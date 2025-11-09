@@ -178,12 +178,18 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
               )}
 
               <div className="flex justify-between items-center">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
                     {taskAttachments.length > 0 && (
-                      <div className="flex items-center gap-1" title={`${taskAttachments.length} вложений`}>
-                          <PaperclipIcon className="w-3.5 h-3.5" />
-                          <span>{taskAttachments.length}</span>
-                      </div>
+                        <div className="flex items-center gap-1.5">
+                            {taskAttachments.slice(0, 3).map(att => (
+                                <div key={att.id} title={att.name}>
+                                    {getAttachmentIcon(att)}
+                                </div>
+                            ))}
+                            {taskAttachments.length > 3 && (
+                                <span className="text-xs font-mono">+ {taskAttachments.length - 3}</span>
+                            )}
+                        </div>
                     )}
                     {dueDateInfo && (
                       <div className={`flex items-center gap-1 font-semibold ${dueDateInfo.color}`}>
