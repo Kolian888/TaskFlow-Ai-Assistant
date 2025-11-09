@@ -92,7 +92,7 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, onUpdate, 
         role="dialog"
       >
         <div 
-          className="bg-secondary p-6 rounded-3xl shadow-soft-glow max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col border border-border-color"
+          className="bg-secondary p-4 md:p-6 rounded-3xl shadow-soft-glow max-w-md md:max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col border border-border-color"
           onClick={e => e.stopPropagation()}
         >
           <h2 className="text-2xl font-bold text-text-primary mb-4 flex-shrink-0">Редактировать проект</h2>

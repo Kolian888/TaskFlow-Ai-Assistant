@@ -4,6 +4,10 @@
 
 
 
+
+
+
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
 import Header from './components/Header';
@@ -24,7 +28,8 @@ import Achievements from './components/Achievements';
 import FileLibrary from './components/FileLibrary';
 import FocusPet from './components/FocusPet';
 import CharacterSelectionModal from './components/CharacterSelectionModal';
-import StoreModal from './components/StoreModal';
+// FIX: Changed import to be a named import as StoreModal does not have a default export.
+import { StoreModal } from './components/StoreModal';
 import { PET_CUSTOMIZATIONS } from './pet-data';
 import Notes from './components/Notes';
 import NotesView from './components/NotesView';
@@ -33,11 +38,11 @@ import QuestsView from './components/QuestsView';
 import { RANKS } from './ranks';
 import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import CharacterSwitchModal from './components/CharacterSwitchModal';
-import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon } from './components/Icons';
+import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon, MenuIcon, CalendarDaysIcon, MindMapIcon } from './components/Icons';
 import HabitTracker from './components/HabitTracker';
 import BoardEditModal from './components/BoardEditModal';
 import ParaView from './components/ParaView';
-import { Reorder, motion } from 'framer-motion';
+import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import SidebarWidget from './components/SidebarWidget';
 import TaskFormModal from './components/TaskFormModal';
 import QuickAddMenu from './components/QuickAddMenu';
@@ -56,6 +61,62 @@ const APP_DATA_KEY = 'taskflow_app_data_v1';
 
 // FIX: Define a type for sidebar widget keys to prevent 'unknown' index type error.
 type SidebarWidgetKey = 'projects' | 'form' | 'pet' | 'quests' | 'notes' | 'pomodoro' | 'notifications';
+
+const MobileMenu: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onViewChange: (view: any) => void;
+}> = ({ isOpen, onClose, onViewChange }) => {
+    const menuItems = [
+        { id: 'habits', label: 'Привычки', icon: ArrowPathIcon },
+        { id: 'achievements', label: 'Питомец', icon: HeartIcon },
+        { id: 'calendar', label: 'Календарь', icon: CalendarDaysIcon },
+        { id: 'mindmap', label: 'Карты разума', icon: MindMapIcon },
+        { id: 'graph', label: 'Звёздное Небо', icon: SparklesIcon },
+        { id: 'para', label: 'PARA', icon: LayersIcon },
+        { id: 'stats', label: 'Статистика', icon: ChartBarIcon },
+        { id: 'quests', label: 'Квесты', icon: TrophyIcon },
+        { id: 'library', label: 'Библиотека', icon: FolderOpenIcon },
+    ];
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-primary/80 backdrop-blur-xl z-50 flex flex-col p-4"
+                    onClick={onClose}
+                >
+                    <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: '0%' }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+                        className="bg-secondary p-6 rounded-3xl w-full max-w-md mx-auto mt-auto border border-border-color"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <h3 className="text-center text-lg font-semibold text-text-secondary mb-6">Меню</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            {menuItems.map(item => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => onViewChange(item.id)}
+                                    className="flex flex-col items-center justify-center gap-2 p-2 bg-accent rounded-2xl hover:bg-white/5 transition-colors h-24 group"
+                                >
+                                    <item.icon className="w-8 h-8 text-text-secondary group-hover:text-highlight transition-colors" />
+                                    <span className="font-semibold text-text-primary text-xs text-center">{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
 
 const App: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
@@ -100,6 +161,7 @@ const App: React.FC = () => {
     const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
     const [isQuickProjectOpen, setIsQuickProjectOpen] = useState(false);
     const [isQuickBoardOpen, setIsQuickBoardOpen] = useState(false);
+    const [isMobileNavMenuOpen, setIsMobileNavMenuOpen] = useState(false);
     
     const [activeMindMapId, setActiveMindMapId] = useState<string | null>(null);
     const [isGeneratingMindMap, setIsGeneratingMindMap] = useState(false);
@@ -1316,9 +1378,9 @@ const App: React.FC = () => {
 
     const mobileNavItems = [
         { id: 'dashboard', label: 'Главная', icon: HomeIcon },
-        { id: 'habits', label: 'Привычки', icon: ArrowPathIcon },
-        { id: 'notes', label: 'Заметки', icon: DocumentDuplicateIcon },
-        { id: 'achievements', label: 'Питомец', icon: HeartIcon },
+        { id: 'kanban', label: 'Канбан', icon: KanbanIcon },
+        { id: 'knowledge', label: 'Идеи', icon: DocumentDuplicateIcon },
+        { id: 'menu', label: 'Меню', icon: MenuIcon, action: () => setIsMobileNavMenuOpen(true) },
     ];
     
     return (
@@ -1357,7 +1419,7 @@ const App: React.FC = () => {
                     <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-highlight/50 to-transparent"></div>
                     <div className="grid grid-cols-5 items-center h-full">
                         {mobileNavItems.slice(0, 2).map(item => (
-                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
+                            <button key={item.id} onClick={() => item.action ? item.action() : setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
                                 {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
                                 <item.icon className="w-5 h-5" />
                                 <span className="text-[9px] font-medium">{item.label}</span>
@@ -1371,7 +1433,7 @@ const App: React.FC = () => {
                         </div>
 
                         {mobileNavItems.slice(2, 4).map(item => (
-                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
+                            <button key={item.id} onClick={() => item.action ? item.action() : setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
                                  {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
                                 <item.icon className="w-5 h-5" />
                                 <span className="text-[9px] font-medium">{item.label}</span>
@@ -1380,6 +1442,15 @@ const App: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <MobileMenu
+                isOpen={isMobileNavMenuOpen}
+                onClose={() => setIsMobileNavMenuOpen(false)}
+                onViewChange={(view) => {
+                    setActiveView(view);
+                    setIsMobileNavMenuOpen(false);
+                }}
+            />
             
             <SettingsModal 
                 isOpen={isSettingsOpen}
@@ -1435,7 +1506,7 @@ const App: React.FC = () => {
             {noteToEdit && <NoteEditModal note={noteToEdit} onUpdate={handleUpdateNote} onCancel={() => setNoteToEdit(null)} noteFolders={noteFolders} projects={projects} tasks={tasks} />}
             {boardToEdit && <BoardEditModal isOpen={!!boardToEdit} board={boardToEdit === 'new' ? null : boardToEdit} onClose={() => setBoardToEdit(null)} onSave={(name, boardId) => { if (boardId) { handleUpdateBoard(boardId, name); } else { handleAddBoard(name); } }} />}
             
-            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} />
+            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
             <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
             <CharacterSwitchModal isOpen={isCharacterSwitchOpen} onClose={() => setIsCharacterSwitchOpen(false)} onSwitch={handleCharacterSwitch} unlockedTypes={playerStats.unlockedCharacterTypes} activeType={playerStats.characterType} />
             <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} playerStats={playerStats} onUnlockColor={handleUnlockPetColor} onSelectColor={handleSelectPetColor} onUnlockCharacterType={handleUnlockCharacterType} />

@@ -66,7 +66,7 @@ const NoteEditModal: React.FC<NoteEditModalProps> = ({ note, onUpdate, onCancel,
     
     return (
         <div className="fixed inset-0 bg-primary/80 backdrop-blur-xl flex justify-center items-center z-50 p-4" onClick={onCancel}>
-            <div className="bg-secondary p-6 rounded-3xl shadow-soft-glow max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col border border-border-color" onClick={e => e.stopPropagation()}>
+            <div className="bg-secondary p-4 md:p-6 rounded-3xl shadow-soft-glow max-w-md md:max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col border border-border-color" onClick={e => e.stopPropagation()}>
                 <h2 className="text-2xl font-bold text-text-primary mb-6 flex-shrink-0">Редактировать заметку</h2>
                 <div className="flex-grow overflow-y-auto pr-2 -mr-2 space-y-5">
                     
@@ -97,7 +97,7 @@ const NoteEditModal: React.FC<NoteEditModalProps> = ({ note, onUpdate, onCancel,
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Project Links */}
                         <div>
                             <h3 className="text-sm font-medium text-text-secondary mb-2 pl-1">Привязанные проекты</h3>

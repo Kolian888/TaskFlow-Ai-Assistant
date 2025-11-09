@@ -52,6 +52,7 @@ interface AIAssistantProps {
     onVoiceInput: () => void;
     context: any;
     onClearContext: () => void;
+    isMobile: boolean;
 }
 
 type ChatMessage = {
@@ -74,7 +75,7 @@ const AIAssistant: React.FC<AIAssistantProps> = (props) => {
         onAddAttachment, onFeedPet, onPlayWithPet, onBathePet, onTogglePetSleep,
         onAddNote, onUpdateNote, onDeleteNote, onAddNoteFolder, onUpdateNoteFolder, onDeleteNoteFolder,
         onAddMindMap, onUpdateMindMap, onDeleteMindMap, onAddMindMapNode, onUpdateMindMapNode, onDeleteMindMapNode, onGenerateMindMapFromProject,
-        onSpeak, hotkeys, settings, isListening, onVoiceInput, context, onClearContext
+        onSpeak, hotkeys, settings, isListening, onVoiceInput, context, onClearContext, isMobile
     } = props;
     
     const [messages, setMessages] = useState<ChatMessage[]>([]);
