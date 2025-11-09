@@ -123,9 +123,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, projects, onUpdateTa
                     return (
                         <div
                             key={index}
-                            // FIX: The ref callback was returning the Map object from `set`, which is not a valid return type.
-                            // Wrapping the call in curly braces ensures the callback correctly returns undefined.
-                            ref={el => { dayRefs.current.set(dateStr, el); }}
+                            ref={el => { dayRefs.current.set(dateStr, el) }}
                             className={`bg-primary rounded-lg p-2 flex flex-col relative overflow-hidden transition-colors border ${isToday ? 'border-highlight' : 'border-transparent'} ${isCurrentMonth ? '' : 'bg-accent/30'}`}
                         >
                             <span className={`font-semibold mb-2 ${isToday ? 'text-highlight' : isCurrentMonth ? 'text-text-secondary' : 'text-text-secondary/50'}`}>

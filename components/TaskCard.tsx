@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Task, Subtask, priorityStyles, Attachment } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlayIcon, CalendarIcon, PaperclipIcon, DotsVerticalIcon, InformationCircleIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon, LinkIcon, PhotoIcon, DocumentTextIcon, ChevronDownIcon } from './Icons';
+import { PlayIcon, CalendarIcon, PaperclipIcon, DotsVerticalIcon, InformationCircleIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon, LinkIcon, PhotoIcon, DocumentTextIcon, ChevronDownIcon, MicrophoneIcon } from './Icons';
 
 interface TaskCardProps {
   task: Task;
@@ -17,9 +17,10 @@ interface TaskCardProps {
   projectEmoji?: string;
   isMobile?: boolean;
   allAttachments: Attachment[];
+  onOpenAiWithContext: (context: any) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, isDragging, onStartPomodoro, onDeleteRequest, onEditRequest, onUpdateTask, onDuplicateTask, projectColor, projectEmoji, isMobile = false, allAttachments }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, isDragging, onStartPomodoro, onDeleteRequest, onEditRequest, onUpdateTask, onDuplicateTask, projectColor, projectEmoji, isMobile = false, allAttachments, onOpenAiWithContext }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -254,6 +255,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
                 )}
                 <button onClick={onStartPomodoro} className="w-8 h-8 flex items-center justify-center bg-highlight/20 text-highlight rounded-lg hover:bg-highlight/30 transition-colors" aria-label={`Начать Помодоро для ${task.title}`}><PlayIcon className="w-5 h-5" /></button>
                 
+                <button 
+                    onClick={() => onOpenAiWithContext(task)} 
+                    className="w-8 h-8 flex items-center justify-center text-text-secondary rounded-lg hover:bg-white/10 hover:text-white transition-colors" 
+                    aria-label={`AI-помощник для ${task.title}`}
+                >
+                    <MicrophoneIcon className="w-5 h-5" />
+                </button>
+
                 <div className="relative" ref={menuRef}>
                     <button onClick={() => setIsMenuOpen(prev => !prev)} className="w-8 h-8 flex items-center justify-center text-text-secondary rounded-lg hover:bg-white/10 hover:text-white transition-colors" aria-label={`Действия с задачей ${task.title}`}>
                         <DotsVerticalIcon className="w-5 h-5" />

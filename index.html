@@ -9,6 +9,73 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root, [data-theme="dark_default"] {
+        --color-primary: #0D1117;
+        --color-secondary: #161B22;
+        --color-accent: rgba(34, 41, 51, 0.5);
+        --color-border: rgba(255, 255, 255, 0.1);
+        --color-text-primary: #E6EDF3;
+        --color-text-secondary: #B0BAC6;
+        --color-highlight: #58A6FF;
+        --color-base-bg: #151515;
+
+        --color-neon-purple: #9C5EFF;
+        --color-neon-blue: #00C6FF;
+        
+        --color-brand-teal: #33C5B1;
+        --color-brand-blue: #4E95F2;
+        --color-brand-purple: #A371F7;
+        --color-brand-pink: #E96ED4;
+        --color-brand-green: #52D186;
+        --color-brand-yellow: #F2C94C;
+        --color-brand-red: #EB5757;
+      }
+
+      [data-theme="light"] {
+        --color-primary: #FFFFFF;
+        --color-secondary: #F6F8FA;
+        --color-accent: rgba(230, 230, 230, 0.5);
+        --color-border: rgba(0, 0, 0, 0.1);
+        --color-text-primary: #1F2328;
+        --color-text-secondary: #57606A;
+        --color-highlight: #0969DA;
+        --color-base-bg: #F0F2F5;
+
+        --color-neon-purple: #8A3FFC;
+        --color-neon-blue: #0072C3;
+        
+        --color-brand-teal: #1A9A8A;
+        --color-brand-blue: #0969DA;
+        --color-brand-purple: #8A3FFC;
+        --color-brand-pink: #D039BE;
+        --color-brand-green: #1F883D;
+        --color-brand-yellow: #BF8700;
+        --color-brand-red: #CF222E;
+      }
+      
+      [data-theme="tokyo_night"] {
+        --color-primary: #1a1b26;
+        --color-secondary: #24283b;
+        --color-accent: rgba(41, 45, 62, 0.5);
+        --color-border: rgba(122, 128, 153, 0.2);
+        --color-text-primary: #c0caf5;
+        --color-text-secondary: #a9b1d6;
+        --color-highlight: #7aa2f7;
+        --color-base-bg: #16161e;
+
+        --color-neon-purple: #bb9af7;
+        --color-neon-blue: #7dcfff;
+        
+        --color-brand-teal: #449dab;
+        --color-brand-blue: #7aa2f7;
+        --color-brand-purple: #bb9af7;
+        --color-brand-pink: #ff79c6;
+        --color-brand-green: #9ece6a;
+        --color-brand-yellow: #e0af68;
+        --color-brand-red: #f7768e;
+      }
+    </style>
     <script>
       tailwind.config = {
         theme: {
@@ -17,27 +84,25 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              'primary': '#0D1117', // Main background
-              'secondary': '#161B22', // Panel background
-              'accent': 'rgba(34, 41, 51, 0.5)', // Glass background
-              'border-color': 'rgba(255, 255, 255, 0.1)',
-              'text-primary': '#E6EDF3',
-              'text-secondary': '#B0BAC6',
-              'highlight': '#58A6FF', // A clear, accessible blue
+              'primary': 'var(--color-primary)',
+              'secondary': 'var(--color-secondary)',
+              'accent': 'var(--color-accent)',
+              'border-color': 'var(--color-border)',
+              'text-primary': 'var(--color-text-primary)',
+              'text-secondary': 'var(--color-text-secondary)',
+              'highlight': 'var(--color-highlight)',
 
-              // Neon Palette
-              'neon-purple': '#9C5EFF',
-              'neon-blue': '#00C6FF',
-              'base-bg': '#151515',
+              'neon-purple': 'var(--color-neon-purple)',
+              'neon-blue': 'var(--color-neon-blue)',
+              'base-bg': 'var(--color-base-bg)',
 
-              // Brand colors
-              'brand-teal': '#33C5B1',
-              'brand-blue': '#4E95F2',
-              'brand-purple': '#A371F7',
-              'brand-pink': '#E96ED4',
-              'brand-green': '#52D186',
-              'brand-yellow': '#F2C94C',
-              'brand-red': '#EB5757',
+              'brand-teal': 'var(--color-brand-teal)',
+              'brand-blue': 'var(--color-brand-blue)',
+              'brand-purple': 'var(--color-brand-purple)',
+              'brand-pink': 'var(--color-brand-pink)',
+              'brand-green': 'var(--color-brand-green)',
+              'brand-yellow': 'var(--color-brand-yellow)',
+              'brand-red': 'var(--color-brand-red)',
             },
             borderRadius: {
                 'xl': '1rem',

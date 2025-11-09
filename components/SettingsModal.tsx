@@ -74,6 +74,7 @@ const actionConfig = {
         actions: [
             { id: 'viewDashboard', name: 'Перейти на Главную' },
             { id: 'viewKanban', name: 'Открыть Канбан-доску' },
+            { id: 'viewCalendar', name: 'Открыть Календарь' },
             { id: 'viewStats', name: 'Открыть Статистику' },
             { id: 'viewAchievements', name: 'Открыть Питомца' },
             { id: 'viewLibrary', name: 'Открыть Библиотеку' },
@@ -102,9 +103,16 @@ const actionConfig = {
             { id: 'toggleSettings', name: 'Открыть/Закрыть Настройки' },
             { id: 'toggleQuickAdd', name: 'Открыть/Закрыть меню "Быстрое добавление"' },
             { id: 'formatToMarkdown', name: 'Форматировать текст в Markdown (в редакторе)' },
+            { id: 'toggleSearch', name: 'Открыть/Закрыть Поиск' },
         ]
     }
 };
+
+const themes = [
+    { id: 'dark_default', name: 'Стандартная темная', colors: ['#0D1117', '#161B22', '#58A6FF'] },
+    { id: 'light', name: 'Светлая', colors: ['#FFFFFF', '#F6F8FA', '#0969DA'] },
+    { id: 'tokyo_night', name: 'Tokyo Night', colors: ['#1a1b26', '#24283b', '#7aa2f7'] },
+];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, availableVoices, onExport, onImport }) => {
     const [localSettings, setLocalSettings] = useState(settings);
@@ -190,6 +198,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                 <div className="flex-grow overflow-y-auto pr-2 -mr-4">
                     {activeTab === 'interface' && (
                         <div className="space-y-6">
+                             <div>
+                                <h3 className="text-lg font-semibold text-text-secondary mb-3">Тема оформления</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-primary rounded-xl border border-border-color">
+                                    {themes.map(theme => (
+                                        <button 
+                                            key={theme.id}
+                                            onClick={() => handleSettingChange('theme', theme.id)}
+                                            className={`p-3 rounded-lg border-2 transition-all ${localSettings.theme === theme.id ? 'border-highlight ring-2 ring-highlight/50' : 'border-border-color hover:border-text-secondary'}`}
+                                        >
+                                            <div className="flex gap-2 mb-2">
+                                                {theme.colors.map((color, index) => (
+                                                    <div key={index} className="w-6 h-6 rounded-full border border-border-color" style={{ backgroundColor: color }}></div>
+                                                ))}
+                                            </div>
+                                            <p className="text-sm font-semibold text-text-primary text-left">{theme.name}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-text-secondary mb-3">Подсказки</h3>
                                 <div className="space-y-3 p-4 bg-primary rounded-xl border border-border-color">

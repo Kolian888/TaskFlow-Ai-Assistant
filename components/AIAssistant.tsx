@@ -50,6 +50,8 @@ interface AIAssistantProps {
     settings: Settings;
     isListening: boolean;
     onVoiceInput: () => void;
+    context: any;
+    onClearContext: () => void;
 }
 
 type ChatMessage = {
@@ -72,7 +74,7 @@ const AIAssistant: React.FC<AIAssistantProps> = (props) => {
         onAddAttachment, onFeedPet, onPlayWithPet, onBathePet, onTogglePetSleep,
         onAddNote, onUpdateNote, onDeleteNote, onAddNoteFolder, onUpdateNoteFolder, onDeleteNoteFolder,
         onAddMindMap, onUpdateMindMap, onDeleteMindMap, onAddMindMapNode, onUpdateMindMapNode, onDeleteMindMapNode, onGenerateMindMapFromProject,
-        onSpeak, hotkeys, settings, isListening, onVoiceInput
+        onSpeak, hotkeys, settings, isListening, onVoiceInput, context, onClearContext
     } = props;
     
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -111,10 +113,10 @@ const AIAssistant: React.FC<AIAssistantProps> = (props) => {
             setSuggestions([]);
         } else if (messages.length === 0 && !isLoading) {
              setSuggestions([
+                "Разбей цель 'Запустить блог' на задачи",
                 "Создай задачу 'Подготовить отчет' с высоким приоритетом на завтра",
-                "Создай проект 'Запуск блога' в сфере 'Развитие и Учеба'",
                 "Какие у меня задачи по проекту 'Летний отпуск'?",
-                "Запиши заметку с заголовком 'Идея для статьи' и содержанием '5 способов повысить фокус'",
+                "Запиши заметку с заголовком 'Идея для статьи'",
             ]);
         }
     }, [input, messages.length, isLoading]);
@@ -171,6 +173,47 @@ const AIAssistant: React.FC<AIAssistantProps> = (props) => {
         { name: 'deleteMindMapNode', parameters: { type: Type.OBJECT, properties: { mapId: { type: Type.STRING, description: 'Optional. ID of the map. If not provided, the active map will be used.' }, nodeId: { type: Type.STRING } }, required: ['nodeId'] } },
         { name: 'deleteMindMap', parameters: { type: Type.OBJECT, properties: { mapId: { type: Type.STRING } }, required: ['mapId'] } },
         { name: 'generateMindMapFromProject', parameters: { type: Type.OBJECT, properties: { projectId: { type: Type.STRING } }, required: ['projectId'] } },
+        {
+            name: 'decomposeGoal',
+            description: 'Breaks down a high-level user goal into a structured project with tasks and subtasks.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                boardName: {
+                  type: Type.STRING,
+                  description: 'The name of the board (area of life) where the project should be created. Must be one of the existing boards.',
+                },
+                project: {
+                  type: Type.OBJECT,
+                  description: 'The project structure to be created.',
+                  properties: {
+                    name: { type: Type.STRING, description: 'A concise, actionable name for the project.' },
+                    emoji: { type: Type.STRING, description: 'A single emoji that represents the project.' },
+                    tasks: {
+                      type: Type.ARRAY,
+                      description: 'A list of tasks to accomplish the project.',
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          title: { type: Type.STRING },
+                          description: { type: Type.STRING, description: 'A brief description of the task.' },
+                          priority: { type: Type.STRING, enum: Object.values(TaskPriority), description: 'Priority of the task.' },
+                          subtasks: {
+                            type: Type.ARRAY,
+                            description: 'A list of sub-steps for the task.',
+                            items: { type: Type.STRING },
+                          },
+                        },
+                        required: ['title'],
+                      },
+                    },
+                  },
+                  required: ['name', 'tasks'],
+                },
+              },
+              required: ['boardName', 'project'],
+            },
+          }
     ];
     
     const handleToolCall = async (call: any): Promise<any> => {
@@ -359,6 +402,7 @@ const AIAssistant: React.FC<AIAssistantProps> = (props) => {
 🎯 МИССИЯ
 Помогать пользователю думать, действовать и расти как мега-эффективная личность.
 Ты понимаешь контекст, предугадываешь потребности, создаёшь связи между идеями и превращаешь хаос в систему.
+Ты можешь декомпозировать большие, абстрактные цели на конкретные проекты и задачи. Когда пользователь просит разбить цель, используй функцию decomposeGoal. Ты должен сгенерировать логическую структуру проекта с задачами и подзадачами.
 
 💡 ПРАВИЛА ПОВЕДЕНИЯ
 - Всегда анализируй контекст и подстраивайся под сферу жизни.
@@ -608,6 +652,40 @@ ${generateContext()}`;
                         result = { success: false, message: `Сфера "${areaName as string}" не найдена.` };
                     }
                 }
+                else if (functionName === 'decomposeGoal') {
+                    const { boardName, project: projectData } = args as { boardName: string; project: { name: string; emoji: string; tasks: any[] } };
+                    
+                    const targetBoard = boards.find(b => b.name.toLowerCase() === boardName.toLowerCase());
+                    if (!targetBoard) {
+                        result = { success: false, message: `Board named "${boardName}" not found. Available boards are: ${boards.map(b => b.name).join(', ')}.` };
+                    } else {
+                        // 1. Create the project
+                        const newProject = onAddProject(projectData.name, '#A371F7', projectData.emoji || '🎯', [], targetBoard.id);
+            
+                        // 2. Create tasks for the project
+                        let tasksCreatedCount = 0;
+                        if (projectData.tasks && projectData.tasks.length > 0) {
+                            for (const task of projectData.tasks) {
+                                const subtasks: Subtask[] = (task.subtasks || []).map((st: string) => ({
+                                    id: crypto.randomUUID(),
+                                    title: st,
+                                    completed: false,
+                                }));
+            
+                                await onAddTask({
+                                    title: task.title,
+                                    description: task.description || '',
+                                    projectId: newProject.id,
+                                    pomodorosEstimated: 1,
+                                    priority: task.priority || TaskPriority.Medium,
+                                    subtasks: subtasks,
+                                }, targetBoard.id);
+                                tasksCreatedCount++;
+                            }
+                        }
+                        result = { success: true, message: `Цель разложена! Создан проект "${newProject.name}" с ${tasksCreatedCount} задачами в сфере "${targetBoard.name}".` };
+                    }
+                }
                 // MIND MAP write functions
                 else if (functionName === 'createMindMap') {
                     const newMap: MindMap = { id: crypto.randomUUID(), name: args.name as string, nodes: [{ id: crypto.randomUUID(), label: args.name as string, x: 0, y: 0 }] };
@@ -698,6 +776,13 @@ ${generateContext()}`;
         }
     }, [input, isLoading, uploadedImage, messages, generateContext]);
     
+    useEffect(() => {
+        if (isOpen && context?.type === 'task') {
+            const prompt = `Что можно сделать с задачей "${context.title}"?`;
+            handleSendMessage(prompt);
+            onClearContext();
+        }
+    }, [isOpen, context, onClearContext, handleSendMessage]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {

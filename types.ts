@@ -212,4 +212,5 @@ export interface Settings {
     enableTts: boolean;
     selectedVoiceURI: string | null;
     showHotkeyTooltips: boolean;
+    theme: string;
 }
