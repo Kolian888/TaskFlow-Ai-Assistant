@@ -23,7 +23,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       role="dialog"
     >
       <div 
-        className="bg-secondary p-6 md:p-8 rounded-3xl shadow-soft-glow max-w-sm w-full border border-border-color"
+        className="bg-secondary p-4 md:p-6 rounded-3xl shadow-soft-glow max-w-sm w-full border border-border-color"
         onClick={e => e.stopPropagation()}
       >
         <h2 className="text-xl font-bold text-text-primary mb-4">{title}</h2>

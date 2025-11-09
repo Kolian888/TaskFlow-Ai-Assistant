@@ -8,6 +8,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
 import Header from './components/Header';
@@ -28,7 +29,6 @@ import Achievements from './components/Achievements';
 import FileLibrary from './components/FileLibrary';
 import FocusPet from './components/FocusPet';
 import CharacterSelectionModal from './components/CharacterSelectionModal';
-// FIX: Changed import to be a named import as StoreModal does not have a default export.
 import { StoreModal } from './components/StoreModal';
 import { PET_CUSTOMIZATIONS } from './pet-data';
 import Notes from './components/Notes';
@@ -1513,7 +1513,7 @@ const App: React.FC = () => {
             
             <motion.button
                 onClick={handleVoiceInput}
-                className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg"
+                className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg lg:hidden"
                 aria-label="Активировать голосовое управление"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}

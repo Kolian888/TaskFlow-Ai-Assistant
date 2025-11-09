@@ -47,7 +47,7 @@ export const StoreModal: React.FC<StoreModalProps> = ({ isOpen, onClose, playerS
                     initial={{ scale: 0.9, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
                     exit={{ scale: 0.9, y: 20 }}
-                    className="bg-secondary p-4 md:p-6 rounded-3xl shadow-soft-glow w-full max-w-md md:max-w-3xl border border-border-color flex flex-col max-h-[90vh]"
+                    className="bg-secondary p-4 md:p-6 rounded-3xl shadow-soft-glow w-full max-w-lg border border-border-color flex flex-col max-h-[90vh]"
                     onClick={e => e.stopPropagation()}
                 >
                     <div className="flex justify-between items-center mb-4 flex-shrink-0">
@@ -64,24 +64,24 @@ export const StoreModal: React.FC<StoreModalProps> = ({ isOpen, onClose, playerS
 
                     <div className="flex-grow overflow-y-auto pr-2 -mr-4">
                         {activeTab === 'skins' && (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {petColors.map(color => {
                                     const isUnlocked = playerStats.unlockedPetColors.includes(color.id);
                                     const isSelected = playerStats.petCustomization.color === color.id;
                                     const canAfford = playerStats.focusCrystals >= color.cost;
 
                                     return (
-                                        <div key={color.id} className="bg-accent p-4 rounded-xl border border-border-color text-center flex flex-col justify-between">
+                                        <div key={color.id} className="bg-accent p-2 md:p-4 rounded-xl border border-border-color text-center flex flex-col justify-between">
                                             <div>
-                                                <div className="w-16 h-16 rounded-full mx-auto mb-3 border-2 border-secondary" style={{ background: `radial-gradient(circle, ${color.visuals.primaryColor} 0%, ${color.visuals.secondaryColor} 100%)` }}></div>
-                                                <h4 className="font-semibold text-text-primary h-10">{color.name}</h4>
+                                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-3 border-2 border-secondary" style={{ background: `radial-gradient(circle, ${color.visuals.primaryColor} 0%, ${color.visuals.secondaryColor} 100%)` }}></div>
+                                                <h4 className="font-semibold text-text-primary text-sm h-10">{color.name}</h4>
                                             </div>
                                             {isSelected ? (
-                                                <div className="flex items-center justify-center gap-1 mt-2 text-brand-green font-semibold"><CheckCircleIcon className="w-4 h-4" /> Активен</div>
+                                                <div className="flex items-center justify-center gap-1 mt-2 text-brand-green font-semibold text-xs"><CheckCircleIcon className="w-4 h-4" /> Активен</div>
                                             ) : isUnlocked ? (
-                                                <button onClick={() => onSelectColor(color.id)} className="mt-2 w-full px-3 py-1.5 bg-highlight/80 text-primary rounded-lg text-sm font-semibold hover:bg-highlight transition-colors">Выбрать</button>
+                                                <button onClick={() => onSelectColor(color.id)} className="mt-2 w-full px-3 py-1.5 bg-highlight/80 text-primary rounded-lg text-xs font-semibold hover:bg-highlight transition-colors">Выбрать</button>
                                             ) : (
-                                                <button onClick={() => onUnlockColor(color.id)} disabled={!canAfford} className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-neon-blue/80 text-white rounded-lg text-sm font-semibold hover:bg-neon-blue transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">
+                                                <button onClick={() => onUnlockColor(color.id)} disabled={!canAfford} className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-neon-blue/80 text-white rounded-lg text-xs font-semibold hover:bg-neon-blue transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">
                                                     <CrystalIcon className="w-4 h-4"/> {color.cost}
                                                 </button>
                                             )}
@@ -91,21 +91,21 @@ export const StoreModal: React.FC<StoreModalProps> = ({ isOpen, onClose, playerS
                             </div>
                         )}
                         {activeTab === 'characters' && (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {Object.entries(characterInfo).map(([type, info]) => {
-                                    const isUnlocked = playerStats.unlockedCharacterTypes.includes(type as CharacterType);
+                                    const isUnlocked = playerStats.unlockedCharacterTypes.includes(type as CharacterType) || info.cost === 0;
                                     const canAfford = playerStats.focusCrystals >= info.cost;
 
                                     return (
-                                        <div key={type} className="bg-accent p-4 rounded-xl border border-border-color text-center flex flex-col justify-between">
+                                        <div key={type} className="bg-accent p-2 md:p-4 rounded-xl border border-border-color text-center flex flex-col justify-between">
                                             <div>
-                                                <info.icon className="w-16 h-16 text-text-secondary mx-auto mb-3" />
-                                                <h4 className="font-semibold text-text-primary h-10">{info.name}</h4>
+                                                <info.icon className="w-12 h-12 md:w-16 md:h-16 text-text-secondary mx-auto mb-3" />
+                                                <h4 className="font-semibold text-text-primary text-sm h-10">{info.name}</h4>
                                             </div>
                                             {isUnlocked ? (
-                                                <div className="flex items-center justify-center gap-1 mt-2 text-brand-green font-semibold"><CheckCircleIcon className="w-4 h-4" /> Разблокирован</div>
+                                                <div className="flex items-center justify-center gap-1 mt-2 text-brand-green font-semibold text-xs"><CheckCircleIcon className="w-4 h-4" /> Разблокирован</div>
                                             ) : (
-                                                <button onClick={() => onUnlockCharacterType(type as CharacterType)} disabled={!canAfford} className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-neon-blue/80 text-white rounded-lg text-sm font-semibold hover:bg-neon-blue transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">
+                                                <button onClick={() => onUnlockCharacterType(type as CharacterType)} disabled={!canAfford} className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-neon-blue/80 text-white rounded-lg text-xs font-semibold hover:bg-neon-blue transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">
                                                     <CrystalIcon className="w-4 h-4"/> {info.cost}
                                                 </button>
                                             )}
@@ -121,5 +121,3 @@ export const StoreModal: React.FC<StoreModalProps> = ({ isOpen, onClose, playerS
         </AnimatePresence>
     );
 };
-
-export default StoreModal;

@@ -813,18 +813,10 @@ ${generateContext()}`;
     return (
         <>
             <div ref={constraintsRef} className="fixed inset-0 pointer-events-none" />
-            <button onClick={() => setIsOpen(!isOpen)} className="group fixed bottom-6 right-6 bg-neon-purple/80 backdrop-blur-md text-white w-16 h-16 rounded-full shadow-lg shadow-neon-purple/40 flex items-center justify-center z-40 hover:bg-neon-purple transition-transform transform hover:scale-110" aria-label="Открыть ассистента Lenochka">
-                {isOpen ? <XIcon className="w-8 h-8"/> : <SparklesIcon className="w-8 h-8" />}
-                {settings.showHotkeyTooltips && hotkeys.toggleAI && (
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-nowrap bg-secondary text-text-primary text-xs px-2 py-1 rounded-md border border-border-color shadow-lg z-50">
-                        {hotkeys.toggleAI.replace(/\+/g, ' + ').toUpperCase()}
-                    </span>
-                )}
-            </button>
             <AnimatePresence>
             {isOpen && (
                  <motion.div 
-                    drag
+                    drag={!isMobile}
                     dragListener={false}
                     dragControls={dragControls}
                     dragConstraints={constraintsRef}
@@ -833,10 +825,11 @@ ${generateContext()}`;
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 100, scale: 0.9 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    className="fixed bottom-28 right-8 w-[calc(100vw-2rem)] max-w-lg h-[75vh] max-h-[700px] bg-secondary/80 backdrop-blur-2xl rounded-3xl shadow-soft-glow-neon z-40 flex flex-col border border-border-color overflow-hidden">
+                    className="fixed bottom-24 lg:bottom-8 right-4 w-[calc(100vw-2rem)] max-w-lg h-[65vh] max-h-[700px] bg-secondary/80 backdrop-blur-2xl rounded-3xl shadow-soft-glow-neon z-40 flex flex-col border border-border-color overflow-hidden"
+                >
                     <header
                         onPointerDown={(e) => {
-                           if ((e.target as HTMLElement).tagName.toLowerCase() !== 'button' && !(e.target as HTMLElement).closest('button')) {
+                           if (!isMobile && (e.target as HTMLElement).tagName.toLowerCase() !== 'button' && !(e.target as HTMLElement).closest('button')) {
                                dragControls.start(e);
                            }
                         }}
