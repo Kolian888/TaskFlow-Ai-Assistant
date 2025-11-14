@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PlayerStats, UserProfile, Settings, Hotkeys } from '../types';
 import Gamification from './Gamification';
-import { TrophyIcon, ChartBarIcon, KanbanIcon, DocumentDuplicateIcon, SparklesIcon, CrystalIcon, FolderOpenIcon, ArrowPathIcon, LayersIcon, MenuIcon, ClockIcon, HomeIcon, ChevronDownIcon, WrenchScrewdriverIcon, MindMapIcon, MicrophoneIcon, Cog6ToothIcon, MagnifyingGlassIcon, CalendarDaysIcon } from './Icons';
+import { TrophyIcon, ChartBarIcon, KanbanIcon, DocumentDuplicateIcon, SparklesIcon, CrystalIcon, FolderOpenIcon, ArrowPathIcon, LayersIcon, MenuIcon, ClockIcon, HomeIcon, ChevronDownIcon, WrenchScrewdriverIcon, MindMapIcon, MicrophoneIcon, Cog6ToothIcon, MagnifyingGlassIcon, CalendarDaysIcon, TargetIcon } from './Icons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
     stats: PlayerStats;
-    activeView: 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'notes' | 'quests' | 'library' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar';
-    onViewChange: (view: 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'notes' | 'quests' | 'library' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar') => void;
+    activeView: 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'notes' | 'quests' | 'library' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar' | 'goals';
+    onViewChange: (view: 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'notes' | 'quests' | 'library' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar' | 'goals') => void;
     onOpenStore: () => void;
     onOpenSettings: () => void;
     onOpenSearch: () => void;
@@ -30,6 +30,7 @@ const Header: React.FC<HeaderProps> = ({ stats, activeView, onViewChange, onOpen
         { id: 'calendar', label: 'Календарь', icon: CalendarDaysIcon },
         { id: 'para', label: 'PARA', icon: LayersIcon },
         { id: 'habits', label: 'Привычки', icon: ArrowPathIcon },
+        { id: 'goals', label: 'Цели', icon: TargetIcon },
         { id: 'mindmap', label: 'Карты разума', icon: MindMapIcon },
         { id: 'knowledge', label: 'Мир Идей', icon: DocumentDuplicateIcon },
         { id: 'graph', label: 'Звёздное Небо', icon: SparklesIcon },
@@ -76,6 +77,7 @@ const Header: React.FC<HeaderProps> = ({ stats, activeView, onViewChange, onOpen
             calendar: 'viewCalendar',
             para: 'viewPara',
             habits: 'viewHabits',
+            goals: 'viewGoals',
             mindmap: 'viewMindMap',
             knowledge: 'viewKnowledge',
             graph: 'viewGraph',

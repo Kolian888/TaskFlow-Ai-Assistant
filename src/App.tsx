@@ -124,6 +124,8 @@ const App = () => {
                 viewMindMap: 'm',
                 viewKnowledge: 'k',
                 viewGraph: 'g',
+// FIX: Add missing 'viewGoals' property to satisfy the Hotkeys interface.
+                viewGoals: 'alt+g',
                 quickAddTask: 'c',
                 quickAddNote: 'n',
                 quickAddProject: 'shift+p',

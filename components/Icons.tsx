@@ -501,3 +501,9 @@ export const MagnifyingGlassIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
     </svg>
 );
+
+export const TargetIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0-2.51-2.225.569-9.47 5.223 5.223-3.282 6.482zM10.925 15.115l-3.282-6.482 5.223-5.223.569 9.47-2.51 2.225zM2.25 12l3.282-6.482 4.14 4.14-2.51 2.225-4.912.441a.75.75 0 00-.616.616L2.25 12zM12 2.25a.75.75 0 01.75.75v3.013a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75z" />
+    </svg>
+);

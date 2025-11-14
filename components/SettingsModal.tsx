@@ -75,6 +75,7 @@ const actionConfig = {
             { id: 'viewDashboard', name: 'Перейти на Главную' },
             { id: 'viewKanban', name: 'Открыть Канбан-доску' },
             { id: 'viewCalendar', name: 'Открыть Календарь' },
+            { id: 'viewGoals', name: 'Открыть Цели' },
             { id: 'viewStats', name: 'Открыть Статистику' },
             { id: 'viewAchievements', name: 'Открыть Питомца' },
             { id: 'viewLibrary', name: 'Открыть Библиотеку' },

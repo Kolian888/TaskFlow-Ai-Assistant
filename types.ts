@@ -1,5 +1,13 @@
 import React from 'react';
 
+export interface Goal {
+  id: string;
+  name: string;
+  description?: string;
+  targetDate?: string;
+  status: 'in-progress' | 'completed' | 'on-hold' | 'archived';
+}
+
 export interface Board {
   id: string;
   name: string;
@@ -61,6 +69,7 @@ export interface Project {
   tags?: string[];
   attachmentIds?: string[];
   archived?: boolean;
+  goalId?: string | null;
 }
 
 export type CharacterType = 'spark' | 'cat' | 'dog' | 'labubu' | 'dragon' | 'unicorn' | 'phoenix' | 'cthulhu';
@@ -196,6 +205,7 @@ export interface Hotkeys {
     viewKnowledge: string;
     viewGraph: string;
     viewCalendar: string;
+    viewGoals: string;
     quickAddTask: string;
     quickAddNote: string;
     quickAddProject: string;

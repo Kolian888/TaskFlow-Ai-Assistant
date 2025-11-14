@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Project, Attachment, AttachmentType } from '../types';
+import { Project, Attachment, AttachmentType, Goal } from '../types';
 import { EmojiHappyIcon, XIcon, LinkIcon, DocumentTextIcon, PhotoIcon, PaperclipIcon } from './Icons';
 import EmojiPickerModal from './EmojiPickerModal';
 
@@ -12,9 +12,10 @@ interface ProjectEditModalProps {
   onUnlinkAttachment: (attachmentId: string, from: { type: 'project'; id: string; }) => void;
   allAttachments: Attachment[];
   onOpenGallery: (images: Attachment[], startIndex: number) => void;
+  goals: Goal[];
 }
 
-const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, initialTab = 'details', onUpdate, onCancel, onAddAttachment, onUnlinkAttachment, allAttachments, onOpenGallery }) => {
+const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, initialTab = 'details', onUpdate, onCancel, onAddAttachment, onUnlinkAttachment, allAttachments, onOpenGallery, goals }) => {
   const [name, setName] = useState(project.name);
   const [color, setColor] = useState(project.color || '#A371F7');
   const [emoji, setEmoji] = useState(project.emoji || '');
@@ -23,12 +24,14 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, initialTab
   const [newLink, setNewLink] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [goalId, setGoalId] = useState(project.goalId || 'none');
 
   useEffect(() => {
     setName(project.name);
     setColor(project.color || '#A371F7');
     setEmoji(project.emoji || '');
     setTags(project.tags?.join(', ') || '');
+    setGoalId(project.goalId || 'none');
   }, [project]);
 
   useEffect(() => {
@@ -45,7 +48,7 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, initialTab
     if (e) e.preventDefault();
     if (name.trim()) {
       const finalTags = tags.split(',').map(tag => tag.trim()).filter(Boolean);
-      onUpdate({ ...project, name: name.trim(), color, emoji, tags: finalTags });
+      onUpdate({ ...project, name: name.trim(), color, emoji, tags: finalTags, goalId: goalId === 'none' ? null : goalId });
       onCancel();
     }
   };
@@ -119,6 +122,15 @@ const ProjectEditModal: React.FC<ProjectEditModalProps> = ({ project, initialTab
                      <div>
                         <label htmlFor="projectTags" className="block text-sm font-medium text-text-secondary mb-1.5 pl-1">Теги (через запятую)</label>
                         <input id="projectTags" type="text" value={tags} onChange={(e) => setTags(e.target.value)} className={inputClasses} />
+                    </div>
+                    <div>
+                      <label htmlFor="projectGoal" className="block text-sm font-medium text-text-secondary mb-1.5 pl-1">Цель</label>
+                      <select id="projectGoal" value={goalId} onChange={(e) => setGoalId(e.target.value)} className={inputClasses}>
+                          <option value="none">Без цели</option>
+                          {goals.filter(g => g.status !== 'archived').map(g => (
+                              <option key={g.id} value={g.id}>{g.name}</option>
+                          ))}
+                      </select>
                     </div>
                     <div className="flex items-center gap-4">
                       <div>
