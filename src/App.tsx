@@ -1,7 +1,5 @@
 
 
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
 import Header from './components/Header';
@@ -22,7 +20,7 @@ import Achievements from './components/Achievements';
 import FileLibrary from './components/FileLibrary';
 import FocusPet from './components/FocusPet';
 import CharacterSelectionModal from './components/CharacterSelectionModal';
-import StoreModal from './components/StoreModal';
+import { StoreModal } from './components/StoreModal';
 import { PET_CUSTOMIZATIONS } from './pet-data';
 import Notes from './components/Notes';
 import NotesView from './components/NotesView';
@@ -31,11 +29,11 @@ import QuestsView from './components/QuestsView';
 import { RANKS } from './ranks';
 import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import CharacterSwitchModal from './components/CharacterSwitchModal';
-import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon } from './components/Icons';
+import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon, MenuIcon, CalendarDaysIcon, MindMapIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from './components/Icons';
 import HabitTracker from './components/HabitTracker';
 import BoardEditModal from './components/BoardEditModal';
 import ParaView from './components/ParaView';
-import { Reorder, motion } from 'framer-motion';
+import { Reorder, motion, AnimatePresence } from 'framer-motion';
 import SidebarWidget from './components/SidebarWidget';
 import TaskFormModal from './components/TaskFormModal';
 import QuickAddMenu from './components/QuickAddMenu';
@@ -48,14 +46,125 @@ import KnowledgeBaseView from './components/KnowledgeBaseView';
 import GraphView from './components/GraphView';
 import SettingsModal from './components/SettingsModal';
 import GlobalSearchModal from './components/GlobalSearchModal';
+import CalendarView from './components/CalendarView';
 
 const APP_DATA_KEY = 'taskflow_app_data_v1';
 
 // FIX: Define a type for sidebar widget keys to prevent 'unknown' index type error.
 type SidebarWidgetKey = 'projects' | 'form' | 'pet' | 'quests' | 'notes' | 'pomodoro' | 'notifications';
 
-// FIX: Removed React.FC type annotation to allow TypeScript to correctly infer
-// the return type of the component, resolving a misleading type error.
+const ImageGalleryModal: React.FC<{ images: Attachment[]; startIndex: number; onClose: () => void; }> = ({ images, startIndex, onClose }) => {
+    const [currentIndex, setCurrentIndex] = useState(startIndex);
+
+    const nextImage = () => setCurrentIndex(prev => (prev + 1) % images.length);
+    const prevImage = () => setCurrentIndex(prev => (prev - 1 + images.length) % images.length);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'ArrowLeft') prevImage();
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [images.length]);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-primary/90 backdrop-blur-xl z-[100] flex items-center justify-center"
+            onClick={onClose}
+        >
+            <button onClick={onClose} className="absolute top-4 right-4 text-white p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors">
+                <XIcon className="w-8 h-8"/>
+            </button>
+            
+            {images.length > 1 && (
+                 <>
+                    <button onClick={(e) => { e.stopPropagation(); prevImage(); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/30 hover:bg-black/50 transition-colors">
+                        <ChevronLeftIcon className="w-8 h-8"/>
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); nextImage(); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/30 hover:bg-black/50 transition-colors">
+                        <ChevronRightIcon className="w-8 h-8"/>
+                    </button>
+                </>
+            )}
+
+            <AnimatePresence mode="wait">
+                <motion.img
+                    key={currentIndex}
+                    src={images[currentIndex].url}
+                    alt={images[currentIndex].name}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                    className="max-w-[90vw] max-h-[85vh] object-contain"
+                    onClick={e => e.stopPropagation()}
+                />
+            </AnimatePresence>
+        </motion.div>
+    );
+};
+
+const MobileMenu: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onViewChange: (view: any) => void;
+}> = ({ isOpen, onClose, onViewChange }) => {
+    const menuItems = [
+        { id: 'habits', label: 'Привычки', icon: ArrowPathIcon },
+        { id: 'achievements', label: 'Питомец', icon: HeartIcon },
+        { id: 'calendar', label: 'Календарь', icon: CalendarDaysIcon },
+        { id: 'mindmap', label: 'Карты разума', icon: MindMapIcon },
+        { id: 'graph', label: 'Звёздное Небо', icon: SparklesIcon },
+        { id: 'para', label: 'PARA', icon: LayersIcon },
+        { id: 'stats', label: 'Статистика', icon: ChartBarIcon },
+        { id: 'quests', label: 'Квесты', icon: TrophyIcon },
+        { id: 'library', label: 'Библиотека', icon: FolderOpenIcon },
+    ];
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-primary/80 backdrop-blur-xl z-50 flex flex-col p-4"
+                    onClick={onClose}
+                >
+                    <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: '0%' }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+                        className="bg-secondary p-6 rounded-3xl w-full max-w-md mx-auto mt-auto border border-border-color"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <h3 className="text-center text-lg font-semibold text-text-secondary mb-6">Меню</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            {menuItems.map(item => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => onViewChange(item.id)}
+                                    className="flex flex-col items-center justify-center gap-2 p-2 bg-accent rounded-2xl hover:bg-white/5 transition-colors h-24 group"
+                                >
+                                    <item.icon className="w-8 h-8 text-text-secondary group-hover:text-highlight transition-colors" />
+                                    <span className="font-semibold text-text-primary text-xs text-center">{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+
 const App = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -76,11 +185,12 @@ const App = () => {
     const [projectFilter, setProjectFilter] = useState<'all' | string>('all');
     const [tagFilter, setTagFilter] = useState<'all' | string>('all');
     const [dailyQuests, setDailyQuests] = useState<Quest[]>([]);
-    type ActiveView = 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'library' | 'notes' | 'quests' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph';
+    type ActiveView = 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'library' | 'notes' | 'quests' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar';
     const [activeView, setActiveView] = useState<ActiveView>('dashboard');
     
     const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'project' | 'board', id: string, name: string } | null>(null);
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+    const [projectEditModalTab, setProjectEditModalTab] = useState<'details' | 'attachments'>('details');
     const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
     const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
     const [boardToEdit, setBoardToEdit] = useState<Board | 'new' | null>(null);
@@ -99,6 +209,7 @@ const App = () => {
     const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
     const [isQuickProjectOpen, setIsQuickProjectOpen] = useState(false);
     const [isQuickBoardOpen, setIsQuickBoardOpen] = useState(false);
+    const [isMobileNavMenuOpen, setIsMobileNavMenuOpen] = useState(false);
     
     const [activeMindMapId, setActiveMindMapId] = useState<string | null>(null);
     const [isGeneratingMindMap, setIsGeneratingMindMap] = useState(false);
@@ -108,6 +219,9 @@ const App = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [aiContext, setAiContext] = useState<any>(null);
+
+    const [galleryConfig, setGalleryConfig] = useState<{ isOpen: boolean; images: Attachment[]; startIndex: number }>({ isOpen: false, images: [], startIndex: 0 });
     
     const [settings, setSettings] = useState<Settings>(() => {
         const defaultSettings: Settings = {
@@ -124,6 +238,7 @@ const App = () => {
                 viewMindMap: 'm',
                 viewKnowledge: 'k',
                 viewGraph: 'g',
+                viewCalendar: 'v',
 // FIX: Add missing 'viewGoals' property to satisfy the Hotkeys interface.
                 viewGoals: 'alt+g',
                 quickAddTask: 'c',
@@ -139,6 +254,7 @@ const App = () => {
             enableTts: false,
             selectedVoiceURI: null,
             showHotkeyTooltips: true,
+            theme: 'dark_default',
         };
         try {
             const saved = localStorage.getItem('taskflow_settings');
@@ -164,6 +280,22 @@ const App = () => {
     const [isListening, setIsListening] = useState(false);
     const [voiceError, setVoiceError] = useState<string | null>(null);
     const recognitionRef = useRef<any>(null);
+    const speechRecognitionDependenciesRef = useRef<any>({});
+
+
+    const handleOpenGallery = useCallback((images: Attachment[], startIndex: number) => {
+        setGalleryConfig({ isOpen: true, images, startIndex });
+    }, []);
+    const handleCloseGallery = () => setGalleryConfig({ isOpen: false, images: [], startIndex: 0 });
+    
+    const handleOpenProjectEdit = (project: Project, tab: 'details' | 'attachments' = 'details') => {
+        setProjectToEdit(project);
+        setProjectEditModalTab(tab);
+    };
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', settings.theme);
+    }, [settings.theme]);
     
     useEffect(() => {
         if (!isPomodoroActive) {
@@ -364,6 +496,10 @@ const App = () => {
         reader.readAsText(file);
     }, [initialSidebarOrder]);
 
+    const handleOpenAiWithContext = useCallback((context: any) => {
+        setAiContext(context);
+        setIsAiAssistantOpen(true);
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -407,6 +543,7 @@ const App = () => {
                 viewMindMap: () => setActiveView('mindmap'),
                 viewKnowledge: () => setActiveView('knowledge'),
                 viewGraph: () => setActiveView('graph'),
+                viewCalendar: () => setActiveView('calendar'),
                 quickAddTask: () => setIsTaskFormModalOpen(true),
                 quickAddNote: () => setIsQuickNoteOpen(true),
                 quickAddProject: () => setIsQuickProjectOpen(true),
@@ -613,18 +750,23 @@ const App = () => {
             createdAt: new Date().toISOString(),
         };
         setAttachments(prev => [...prev, newAttachment]);
+    
         if (entity.type === 'project') {
             setProjects(prev => prev.map(p => p.id === entity.id ? { ...p, attachmentIds: [...(p.attachmentIds || []), newAttachment.id] } : p));
-        } else {
+            setProjectToEdit(current => current && current.id === entity.id ? { ...current, attachmentIds: [...(current.attachmentIds || []), newAttachment.id] } : current);
+        } else { // entity.type === 'task'
             setTasks(prev => prev.map(t => t.id === entity.id ? { ...t, attachmentIds: [...(t.attachmentIds || []), newAttachment.id] } : t));
+            setTaskToEdit(current => current && current.id === entity.id ? { ...current, attachmentIds: [...(current.attachmentIds || []), newAttachment.id] } : current);
         }
     }, []);
 
     const handleUnlinkAttachment = useCallback((attachmentId: string, from: { type: 'project' | 'task', id: string }) => {
         if (from.type === 'project') {
             setProjects(prev => prev.map(p => p.id === from.id ? { ...p, attachmentIds: p.attachmentIds?.filter(id => id !== attachmentId) } : p));
-        } else {
+            setProjectToEdit(current => current && current.id === from.id ? { ...current, attachmentIds: current.attachmentIds?.filter(id => id !== attachmentId) } : current);
+        } else { // from.type === 'task'
             setTasks(prev => prev.map(t => t.id === from.id ? { ...t, attachmentIds: t.attachmentIds?.filter(id => id !== attachmentId) } : t));
+            setTaskToEdit(current => current && current.id === from.id ? { ...current, attachmentIds: current.attachmentIds?.filter(id => id !== attachmentId) } : current);
         }
     }, []);
 
@@ -967,23 +1109,6 @@ const App = () => {
         setIsSearchOpen(false);
     }, [tasks, projects]);
 
-    const speechRecognitionDependenciesRef = useRef({
-        tasks,
-        projects,
-        boards,
-        activeProjectId,
-        handleAddTask,
-        speak,
-        handleUpdateTaskStatus,
-        handleDeleteTask,
-        handleStartPomodoro,
-        handleCancelPomodoro,
-        setIsPomodoroActive,
-        setActiveView,
-        setIsAiAssistantOpen,
-        setIsSettingsOpen
-    });
-
     useEffect(() => {
         speechRecognitionDependenciesRef.current = {
             tasks,
@@ -999,7 +1124,7 @@ const App = () => {
             setIsPomodoroActive,
             setActiveView,
             setIsAiAssistantOpen,
-            setIsSettingsOpen
+            setIsSettingsOpen,
         };
     }, [
         tasks, projects, boards, activeProjectId,
@@ -1008,7 +1133,13 @@ const App = () => {
         setActiveView, setIsAiAssistantOpen, setIsSettingsOpen
     ]);
 
-    useEffect(() => {
+    const handleVoiceInput = useCallback(() => {
+        if (isListening) {
+            recognitionRef.current?.stop();
+            setIsListening(false);
+            return;
+        }
+
         // @ts-ignore
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
@@ -1018,6 +1149,7 @@ const App = () => {
 
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
+
         recognition.continuous = false;
         recognition.lang = 'ru-RU';
         recognition.interimResults = false;
@@ -1049,7 +1181,6 @@ const App = () => {
                 handleStartPomodoro, handleCancelPomodoro, setIsPomodoroActive,
                 setActiveView, setIsAiAssistantOpen, setIsSettingsOpen
             } = speechRecognitionDependenciesRef.current;
-            
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
 
             const findTaskByName = (name: string) => tasks.find(t => t.title.toLowerCase().includes(name));
@@ -1201,15 +1332,9 @@ const App = () => {
                 }
             }
         };
-    }, []);
 
-    const handleVoiceInput = () => {
-        if (isListening) {
-            recognitionRef.current?.stop();
-        } else {
-            recognitionRef.current?.start();
-        }
-    };
+        recognition.start();
+    }, [isListening]);
 
     const MainContent = () => {
         switch (activeView) {
@@ -1254,10 +1379,11 @@ const App = () => {
                         onDuplicateTask={handleDuplicateTask}
                         isMobile={isMobile}
                         allAttachments={attachments}
+                        onOpenAiWithContext={handleOpenAiWithContext}
                       />
                     </>
                 );
-            case 'para': return <ParaView projects={projects} boards={boards} notes={notes} tasks={tasks} isMobile={isMobile} />;
+            case 'para': return <ParaView projects={projects} boards={boards} notes={notes} tasks={tasks} isMobile={isMobile} allAttachments={attachments}/>;
             case 'stats': return <Statistics tasks={tasks} projects={projects} playerStats={playerStats} onGenerateReport={async () => "Report generated"} />;
             case 'achievements': return <Achievements playerStats={playerStats} onFeed={handleFeedPet} onPlay={handlePlayWithPet} onBathe={handleBathePet} onToggleSleep={handleTogglePetSleep} onPet={() => true} onOpenStore={() => setIsStoreOpen(true)} onSwitchRequest={() => setIsCharacterSwitchOpen(true)} />;
             case 'library': return <FileLibrary attachments={attachments} projects={projects} tasks={tasks} onDeleteAttachment={() => {}} />;
@@ -1283,29 +1409,30 @@ const App = () => {
             case 'mindmap': return <MindMapView mindMaps={mindMaps} activeMapId={activeMindMapId} onSetActiveMapId={setActiveMindMapId} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} projects={projects} tasks={tasks} isGenerating={isGeneratingMindMap} onGenerateFromProject={handleGenerateMindMapFromProject} boards={boards} onConvertToTask={handleConvertToTask} onLinkTaskToNode={handleLinkTaskToNode} onConvertToProject={handleConvertToProject} onLinkProjectToNode={handleLinkProjectToNode} />;
             case 'knowledge': return <KnowledgeBaseView notes={notes} noteFolders={noteFolders} activeNoteId={activeKnowledgeNoteId} onSetActiveNoteId={setActiveKnowledgeNoteId} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddFolder={handleAddNoteFolder} onDeleteFolder={handleDeleteNoteFolder} onNavigateToGraph={() => setActiveView('graph')} voiceCommand={null} settings={settings} />;
             case 'graph': return <GraphView notes={notes} onNavigateToNote={handleNavigateToNote} />;
+            case 'calendar': return <CalendarView tasks={tasks} projects={projects} onUpdateTask={handleUpdateTask} onEditRequest={setTaskToEdit} />;
         }
     };
     
 // FIX: Replaced `JSX.Element` with `React.ReactElement` to resolve "Cannot find namespace 'JSX'" error.
     const sidebarWidgets: Record<SidebarWidgetKey, { title: string, component: React.ReactElement }> = useMemo(() => ({
-        projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={setProjectToEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} /> },
+        projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={handleOpenProjectEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} /> },
         form: { title: 'Добавить задачу', component: <TaskForm onAddTask={(taskData) => handleAddTask(taskData as any)} projects={projects} activeProjectId={activeProjectId} /> },
         pet: { title: 'Питомец', component: <FocusPet stats={playerStats} /> },
         quests: { title: 'Ежедневные квесты', component: <DailyQuests quests={dailyQuests} /> },
         notes: { title: 'Быстрые Заметки', component: <Notes notes={notes} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} /> },
         pomodoro: { title: 'Помодоро', component: <PomodoroTimer activeTask={activePomodoroTask} onComplete={handlePomodoroComplete} onCancel={handleCancelPomodoro} pomodoroSettings={pomodoroSettings} onSettingsChange={setPomodoroSettings} isActive={isPomodoroActive} setIsActive={setIsPomodoroActive} timeRemaining={pomodoroTimeRemaining} setTimeRemaining={setPomodoroTimeRemaining} /> },
         notifications: { title: 'Уведомления', component: <Notifications permission={notificationPermission} onRequestPermission={handleRequestNotificationPermission} tasksDueToday={tasksDueToday} /> }
-    }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, setProjectToEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects]);
+    }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, handleOpenProjectEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects]);
 
-    const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph'].includes(activeView);
+    const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph', 'calendar'].includes(activeView);
 
     const isSidebarVisible = !isFullScreenView && !isMobile;
 
     const mobileNavItems = [
         { id: 'dashboard', label: 'Главная', icon: HomeIcon },
-        { id: 'habits', label: 'Привычки', icon: ArrowPathIcon },
-        { id: 'notes', label: 'Заметки', icon: DocumentDuplicateIcon },
-        { id: 'achievements', label: 'Питомец', icon: HeartIcon },
+        { id: 'kanban', label: 'Канбан', icon: KanbanIcon },
+        { id: 'knowledge', label: 'Идеи', icon: DocumentDuplicateIcon },
+        { id: 'menu', label: 'Меню', icon: MenuIcon, action: () => setIsMobileNavMenuOpen(true) },
     ];
     
     return (
@@ -1340,118 +1467,4 @@ const App = () => {
             </main>
             
             {isMobile && (
-                <div className="fixed bottom-0 left-0 right-0 bg-secondary/80 backdrop-blur-xl border-t border-border-color z-40">
-                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-highlight/50 to-transparent"></div>
-                    <div className="grid grid-cols-5 items-center">
-                        {mobileNavItems.slice(0, 2).map(item => (
-                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-1 py-2 h-16 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
-                                {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
-                                <item.icon className="w-6 h-6" />
-                                <span className="text-[10px] font-medium">{item.label}</span>
-                            </button>
-                        ))}
-
-                        <div className="flex justify-center">
-                            <button onClick={() => setIsQuickAddOpen(true)} className="-mt-6 bg-highlight text-primary w-16 h-16 rounded-full shadow-lg shadow-highlight/30 flex items-center justify-center z-50 mx-auto active:scale-90 transition-transform">
-                                <PlusIcon className="w-8 h-8"/>
-                            </button>
-                        </div>
-
-                        {mobileNavItems.slice(2, 4).map(item => (
-                            <button key={item.id} onClick={() => setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-1 py-2 h-16 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
-                                 {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
-                                <item.icon className="w-6 h-6" />
-                                <span className="text-[10px] font-medium">{item.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-            
-            <SettingsModal 
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                settings={settings}
-                onSave={handleSaveSettings}
-                availableVoices={availableVoices}
-                onExport={handleExportData}
-                onImport={handleImportData}
-            />
-             <GlobalSearchModal
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-                projects={projects}
-                tasks={tasks}
-                notes={notes}
-                onNavigate={handleSearchNavigate}
-            />
-            <QuickAddMenu
-                isOpen={isQuickAddOpen}
-                onClose={() => setIsQuickAddOpen(false)}
-                onAddTaskClick={() => { setIsQuickAddOpen(false); setIsTaskFormModalOpen(true); }}
-                onAddNoteClick={() => { setIsQuickAddOpen(false); setIsQuickNoteOpen(true); }}
-                onAddProjectClick={() => { setIsQuickAddOpen(false); setIsQuickProjectOpen(true); }}
-                onAddBoardClick={() => { setIsQuickAddOpen(false); setIsQuickBoardOpen(true); }}
-            />
-            <QuickAddNoteModal
-                isOpen={isQuickNoteOpen}
-                onClose={() => setIsQuickNoteOpen(false)}
-                onAddNote={(content) => { handleAddNote(content, null); setIsQuickNoteOpen(false); }}
-            />
-             <QuickAddProjectModal
-                isOpen={isQuickProjectOpen}
-                onClose={() => setIsQuickProjectOpen(false)}
-                onAddProject={handleAddProjectQuick}
-                boards={boards}
-            />
-            <QuickAddBoardModal
-                isOpen={isQuickBoardOpen}
-                onClose={() => setIsQuickBoardOpen(false)}
-                onAddBoard={handleAddBoardQuick}
-            />
-            <TaskFormModal 
-                isOpen={isTaskFormModalOpen} 
-                onClose={() => setIsTaskFormModalOpen(false)}
-                onAddTask={handleAddTaskMobile}
-                projects={projects}
-                activeProjectId={activeProjectId}
-            />
-            {itemToDelete && <ConfirmationModal title={`Подтвердите удаление`} message={`Вы уверены, что хотите удалить "${itemToDelete.name}"? Это действие нельзя будет отменить.`} onConfirm={handleConfirmDelete} onCancel={() => setItemToDelete(null)} confirmText="Удалить" confirmClass="bg-brand-red text-white" />}
-            {projectToEdit && <ProjectEditModal project={projectToEdit} onUpdate={handleUpdateProject} onCancel={() => setProjectToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} />}
-            {taskToEdit && <TaskEditModal task={taskToEdit} onUpdate={(task) => handleUpdateTask(task)} onCancel={() => setTaskToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} />}
-            {noteToEdit && <NoteEditModal note={noteToEdit} onUpdate={handleUpdateNote} onCancel={() => setNoteToEdit(null)} noteFolders={noteFolders} projects={projects} tasks={tasks} />}
-            {boardToEdit && <BoardEditModal isOpen={!!boardToEdit} board={boardToEdit === 'new' ? null : boardToEdit} onClose={() => setBoardToEdit(null)} onSave={(name, boardId) => { if (boardId) { handleUpdateBoard(boardId, name); } else { handleAddBoard(name); } }} />}
-            
-            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} />
-            <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
-            <CharacterSwitchModal isOpen={isCharacterSwitchOpen} onClose={() => setIsCharacterSwitchOpen(false)} onSwitch={handleCharacterSwitch} unlockedTypes={playerStats.unlockedCharacterTypes} activeType={playerStats.characterType} />
-            <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} playerStats={playerStats} onUnlockColor={handleUnlockPetColor} onSelectColor={handleSelectPetColor} onUnlockCharacterType={handleUnlockCharacterType} />
-            
-            <motion.button
-                onClick={handleVoiceInput}
-                className="fixed bottom-24 right-6 w-16 h-16 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg"
-                aria-label="Активировать голосовое управление"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                {isListening && (
-                    <motion.div
-                        className="absolute inset-0 rounded-full bg-neon-purple"
-                        animate={{
-                            scale: [1, 1.4, 1],
-                            opacity: [0.7, 0, 0.7],
-                        }}
-                        transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                        }}
-                    />
-                )}
-                <MicrophoneIcon className="w-8 h-8 relative" />
-            </motion.button>
-        </div>
-    );
-};
-
-export default App;
+                <div className="fixed bottom-0 left-0 right-0 bg-secondary

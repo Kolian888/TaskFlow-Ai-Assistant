@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
 import Header from './components/Header';
@@ -164,7 +165,9 @@ const MobileMenu: React.FC<{
 };
 
 
-const App: React.FC = () => {
+// FIX: Removed React.FC type annotation to allow TypeScript to correctly infer
+// the return type of the component, resolving a misleading type error.
+const App = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [boards, setBoards] = useState<Board[]>([]);

@@ -69,32 +69,3 @@ const GoalsView: React.FC<GoalsViewProps> = ({ goals, projects, tasks, onAddGoal
                         <div className="mt-auto">
                             <div className="flex justify-between text-sm mb-1">
                                 <span className="font-semibold text-text-secondary">Прогресс</span>
-                                <span className="font-mono text-text-primary">{Math.round(goal.progress)}%</span>
-                            </div>
-                            <div className="w-full bg-black/30 rounded-full h-2.5"><div className="bg-brand-yellow h-full rounded-full" style={{width: `${goal.progress}%`}}></div></div>
-                            <p className="text-xs text-text-secondary mt-2">{goal.projectCount} проектов</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            
-            {goalToEdit && <GoalEditModal
-                isOpen={!!goalToEdit}
-                goal={goalToEdit === 'new' ? null : goalToEdit}
-                onClose={() => setGoalToEdit(null)}
-                onSave={(name, description, targetDate, goalId) => {
-                    if (goalId) {
-                        const originalGoal = goals.find(g => g.id === goalId);
-                        if (originalGoal) {
-                            onUpdateGoal({ ...originalGoal, name, description, targetDate });
-                        }
-                    } else {
-                        onAddGoal(name, description, targetDate);
-                    }
-                }}
-            />}
-        </div>
-    );
-};
-
-export default GoalsView;

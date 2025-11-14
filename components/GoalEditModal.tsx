@@ -52,7 +52,7 @@ const GoalEditModal: React.FC<GoalEditModalProps> = ({ isOpen, goal, onClose, on
                      <div className="flex justify-end gap-4 mt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-accent rounded-lg font-semibold">Отмена</button>
                         <button type="submit" className="px-4 py-2 bg-highlight text-primary font-semibold rounded-lg">{goal ? 'Сохранить' : 'Создать'}</button>
-                    </div>
+                     </div>
                 </form>
             </div>
         </div>
