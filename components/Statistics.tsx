@@ -5,7 +5,6 @@ import { Task, Project, PlayerStats, TaskPriority } from '../types';
 import { ChartBarIcon, SparklesIcon } from './Icons';
 // @ts-ignore
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
-import { GoogleGenAI } from '@google/genai';
 
 
 const ProgressBar: React.FC<{ percentage: number; colorClass?: string; }> = ({ percentage, colorClass = 'bg-highlight' }) => (
@@ -36,6 +35,7 @@ const Statistics: React.FC<StatisticsProps> = ({ tasks, projects, playerStats, o
     const handleGenerateReport = async () => {
         setIsReportLoading(true);
         setAiReport(null);
+        setIsQuotaExceeded(false);
         const report = await onGenerateReport();
         if (report.includes('Вы превысили лимит запросов')) {
             setIsQuotaExceeded(true);
@@ -148,7 +148,7 @@ const Statistics: React.FC<StatisticsProps> = ({ tasks, projects, playerStats, o
                         {isReportLoading ? 'Анализирую данные...' : 'Сгенерировать отчет'}
                     </button>
                 )}
-                 {isQuotaExceeded && !aiReport && (
+                 {isQuotaExceeded && (
                     <p className="text-center text-brand-yellow text-xs mt-2">
                         Достигнут лимит запросов для генерации отчетов. Попробуйте позже.
                     </p>

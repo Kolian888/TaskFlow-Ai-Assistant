@@ -1,6 +1,8 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+// FIX: Replaced OpenAI with GoogleGenAI and added Type for schema definitions.
+import { GoogleGenAI, Type } from '@google/genai';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys, Goal } from './types';
 import Header from './components/Header';
 import ProjectManager from './components/ProjectManager';
@@ -27,7 +29,6 @@ import NotesView from './components/NotesView';
 import NoteEditModal from './components/NoteEditModal';
 import QuestsView from './components/QuestsView';
 import { RANKS } from './ranks';
-import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import CharacterSwitchModal from './components/CharacterSwitchModal';
 import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon, MenuIcon, CalendarDaysIcon, MindMapIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from './components/Icons';
 import HabitTracker from './components/HabitTracker';
@@ -54,16 +55,6 @@ const APP_DATA_KEY = 'taskflow_app_data_v1';
 
 // FIX: Define a type for sidebar widget keys to prevent 'unknown' index type error.
 type SidebarWidgetKey = 'projects' | 'form' | 'pet' | 'quests' | 'notes' | 'pomodoro' | 'notifications';
-
-// FIX: Remove duplicate global declaration for 'window.aistudio' to resolve conflict.
-// declare global {
-//     interface Window {
-//         aistudio: {
-//             hasSelectedApiKey: () => Promise<boolean>;
-//             openSelectKey: () => Promise<void>;
-//         };
-//     }
-// }
 
 const ImageGalleryModal: React.FC<{ images: Attachment[]; startIndex: number; onClose: () => void; }> = ({ images, startIndex, onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -903,6 +894,7 @@ const App = () => {
         if (!project) return null;
         setIsGeneratingMindMap(true);
         try {
+            // FIX: Replaced OpenAI with GoogleGenAI according to guidelines.
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
             const projectTasks = tasks.filter(t => t.projectId === projectId);
             const taskData = projectTasks.map(t => ({
@@ -911,6 +903,7 @@ const App = () => {
             }));
             const prompt = `Generate a mind map structure for the project '${project.name}'. The root node is the project. Its children are the tasks. Each task's children are its subtasks. Project tasks data: ${JSON.stringify(taskData)}. Provide the output as a nested JSON object with 'label' and 'children' properties.`;
             
+            // FIX: Updated to use ai.models.generateContent with JSON response schema.
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
@@ -928,7 +921,12 @@ const App = () => {
                                         label: { type: Type.STRING },
                                         children: {
                                             type: Type.ARRAY,
-                                            items: { type: Type.OBJECT, properties: { label: { type: Type.STRING } } }
+                                            items: {
+                                                type: Type.OBJECT,
+                                                properties: {
+                                                    label: { type: Type.STRING }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1149,6 +1147,50 @@ const App = () => {
         }
         setIsSearchOpen(false);
     }, [tasks, projects]);
+
+    const handleGenerateReport = useCallback(async (): Promise<string> => {
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            
+            const completedTasks = tasks.filter(t => doneColumnNames.has(t.status)).length;
+            const activeTasks = tasks.length - completedTasks;
+            
+            const prompt = `
+                Ты — AI-коуч по продуктивности в приложении TaskFlow.
+                Проанализируй следующие данные и дай краткий (3-4 абзаца), вдохновляющий и полезный отчет для пользователя на русском языке.
+                Обратись к пользователю по имени, если оно известно (${playerStats.characterName || 'пользователь'}).
+                Используй Markdown для форматирования.
+    
+                ДАННЫЕ:
+                - Уровень: ${playerStats.level}
+                - Ранг: ${playerStats.rank.name}
+                - Всего задач: ${tasks.length}
+                - Выполнено: ${completedTasks}
+                - В процессе: ${activeTasks}
+                - Количество проектов: ${projects.length}
+                - Количество привычек: ${habits.length}
+    
+                ЧТО НУЖНО СДЕЛАТЬ:
+                1. Похвали за достигнутое (уровень, выполненные задачи).
+                2. Обрати внимание на баланс между выполненными и активными задачами. Дай совет.
+                3. Предложи сфокусироваться на одном из проектов или привычек.
+                4. Закончи отчет мотивирующей фразой.
+            `;
+    
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+    
+            return response.text || "Не удалось сгенерировать отчет.";
+        } catch (error: any) {
+            console.error("Error generating AI report:", error);
+            if (error.status === 429) {
+                return "Вы превысили лимит запросов к API. Пожалуйста, попробуйте позже.";
+            }
+            return "Произошла ошибка при генерации отчета.";
+        }
+    }, [tasks, projects, habits, playerStats, doneColumnNames]);
 
     useEffect(() => {
         speechRecognitionDependenciesRef.current = {
@@ -1425,7 +1467,7 @@ const App = () => {
                     </>
                 );
             case 'para': return <ParaView projects={projects} boards={boards} notes={notes} tasks={tasks} isMobile={isMobile} allAttachments={attachments}/>;
-            case 'stats': return <Statistics tasks={tasks} projects={projects} playerStats={playerStats} onGenerateReport={async () => "Report generated"} />;
+            case 'stats': return <Statistics tasks={tasks} projects={projects} playerStats={playerStats} onGenerateReport={handleGenerateReport} />;
             case 'achievements': return <Achievements playerStats={playerStats} onFeed={handleFeedPet} onPlay={handlePlayWithPet} onBathe={handleBathePet} onToggleSleep={handleTogglePetSleep} onPet={() => true} onOpenStore={() => setIsStoreOpen(true)} onSwitchRequest={() => setIsCharacterSwitchOpen(true)} />;
             case 'library': return <FileLibrary attachments={attachments} projects={projects} tasks={tasks} onDeleteAttachment={() => {}} />;
             case 'notes': return <NotesView notes={notes} noteFolders={noteFolders} projects={projects} tasks={tasks} onAddNote={handleAddNote} onDeleteNote={handleDeleteNote} onEditNoteRequest={setNoteToEdit} onAddFolder={handleAddNoteFolder} onUpdateFolder={handleUpdateNoteFolder} onDeleteFolder={handleDeleteNoteFolder} isMobile={isMobile} />;
@@ -1474,7 +1516,7 @@ const App = () => {
         { id: 'knowledge', label: 'Идеи', icon: DocumentDuplicateIcon },
         { id: 'menu', label: 'Меню', icon: MenuIcon, action: () => setIsMobileNavMenuOpen(true) },
     ];
-    
+
     return (
         <div className={`min-h-screen bg-base-bg font-sans ${isMobile ? 'pb-24' : ''}`}>
             <Header 
@@ -1600,7 +1642,7 @@ const App = () => {
             {galleryConfig.isOpen && <ImageGalleryModal images={galleryConfig.images} startIndex={galleryConfig.startIndex} onClose={handleCloseGallery} />}
             <GoalEditModal isOpen={!!goalToEdit} goal={goalToEdit === 'new' ? null : goalToEdit} onClose={() => setGoalToEdit(null)} onSave={handleSaveGoal} />
 
-            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} /* FIX: Correct typo in prop name from onAddAttachment to handleAddAttachment */ handleAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
+            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
             <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
             <CharacterSwitchModal isOpen={isCharacterSwitchOpen} onClose={() => setIsCharacterSwitchOpen(false)} onSwitch={handleCharacterSwitch} unlockedTypes={playerStats.unlockedCharacterTypes} activeType={playerStats.characterType} />
             <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} playerStats={playerStats} onUnlockColor={handleUnlockPetColor} onSelectColor={handleSelectPetColor} onUnlockCharacterType={handleUnlockCharacterType} />

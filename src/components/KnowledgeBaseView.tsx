@@ -21,9 +21,10 @@ interface KnowledgeBaseViewProps {
     voiceCommand: { command: string; payload: string; timestamp: number } | null;
     // FIX: Update the 'settings' prop to use the 'Settings' type for proper type checking.
     settings: Settings;
+    openAiApiKey: string | null;
 }
 
-const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ notes, noteFolders, activeNoteId, onSetActiveNoteId, onAddNote, onUpdateNote, onDeleteNote, onAddFolder, onDeleteFolder, onNavigateToGraph, voiceCommand, settings }) => {
+const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ notes, noteFolders, activeNoteId, onSetActiveNoteId, onAddNote, onUpdateNote, onDeleteNote, onAddFolder, onDeleteFolder, onNavigateToGraph, voiceCommand, settings, openAiApiKey }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTag, setActiveTag] = useState<string | null>(null);
 
@@ -184,6 +185,7 @@ const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ notes, noteFolder
                                 onNavigateToGraph={onNavigateToGraph}
                                 voiceCommand={voiceCommand}
                                 settings={settings}
+                                openAiApiKey={openAiApiKey}
                             />
                         </motion.div>
                     ) : (

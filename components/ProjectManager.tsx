@@ -35,8 +35,6 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
     const [isRateLimited, setIsRateLimited] = useState(false);
     
     useEffect(() => {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-    
         const generateFocusAssessment = async (project: Project, projectTasks: Task[]) => {
             const completedTasks = projectTasks.filter(t => t.status === 'Готово').length;
             const activeTasks = projectTasks.length - completedTasks;
@@ -64,9 +62,12 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
 
                 Сгенерируй наиболее подходящий комментарий для текущего проекта.
             `;
-    
-            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-            return response.text;
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+            return response.text || '';
         };
     
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -82,28 +83,18 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
                 if (projectTasks.length > 0 && !generatingAssessments.has(project.id) && !aiAssessments[project.id]) {
                     setGeneratingAssessments(prev => new Set(prev).add(project.id));
                     try {
-                        await sleep(4100); // Small delay to avoid instant burst
+                        await sleep(1100); // Small delay to avoid instant burst
                         const assessmentText = await generateFocusAssessment(project, projectTasks);
                         if (assessmentText) {
                             setAiAssessments(prev => ({ ...prev, [project.id]: assessmentText }));
                         }
                     } catch (error: any) {
                         console.error(`Error generating assessment for project ${project.id}:`, error);
-    
-                        let isQuotaError = false;
                         const errorString = JSON.stringify(error).toLowerCase();
-                        if (
-                            errorString.includes('429') ||
-                            errorString.includes('resource_exhausted') ||
-                            errorString.includes('quota')
-                        ) {
-                            isQuotaError = true;
-                        }
-    
-                        if (isQuotaError) {
+                        if (errorString.includes('quota') || errorString.includes('rate limit')) {
                             setIsRateLimited(true);
                             setAiAssessments(prev => ({ ...prev, [project.id]: "Достигнут лимит запросов." }));
-                            break; 
+                            break;
                         } else {
                             setAiAssessments(prev => ({ ...prev, [project.id]: "Ошибка анализа." }));
                         }

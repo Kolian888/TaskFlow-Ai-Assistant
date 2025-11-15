@@ -5,7 +5,7 @@ import { TrashIcon, TagIcon, XIcon, ListBulletIcon, SparklesIcon, DocumentTextIc
 // @ts-ignore
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 
 interface NoteEditorProps {
@@ -20,6 +20,7 @@ interface NoteEditorProps {
     voiceCommand: { command: string; payload: string; timestamp: number } | null;
     // FIX: Update the 'settings' prop to use the 'Settings' type for proper type checking.
     settings: Settings;
+    openAiApiKey: string | null;
 }
 
 const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => {
@@ -160,7 +161,8 @@ const FormattingToolbar: React.FC<{ onAction: (syntax: string) => void }> = ({ o
     );
 };
 
-const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNotes, onAddNote, onNoteLinkClick, onCreateNoteFromLink, onNavigateToGraph, voiceCommand, settings }) => {
+// FIX: Changed to a named export to resolve module resolution issues.
+export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNotes, onAddNote, onNoteLinkClick, onCreateNoteFromLink, onNavigateToGraph, voiceCommand, settings, openAiApiKey }) => {
     const [title, setTitle] = useState(note.title);
     const [content, setContent] = useState(note.content);
     const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
@@ -249,6 +251,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
         if (!textarea) return;
 
         const handleKeyDown = async (e: KeyboardEvent) => {
+            if (!openAiApiKey) return;
             const pressedCombo = [
                 (e.ctrlKey || e.metaKey) && 'ctrl',
                 e.altKey && 'alt',
@@ -270,8 +273,11 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
                 try {
                     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
                     const prompt = `Please analyze the following text and convert it into well-structured Markdown format. Use headings, lists, bold, italics, and other Markdown features as appropriate to best represent the structure and intent of the original text. Return only the Markdown formatted text, without any additional explanations or commentary. The original text is:\n\n---\n\n${selectedText}`;
-                    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-                    const formattedText = response.text.trim();
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: prompt
+                    });
+                    const formattedText = response.text || '';
                     
                     const newContent = `${textarea.value.substring(0, start)}${formattedText}${textarea.value.substring(end)}`;
                     setContent(newContent);
@@ -294,7 +300,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
         return () => {
             textarea.removeEventListener('keydown', handleKeyDown);
         };
-    }, [settings.hotkeys.formatToMarkdown, content]);
+    }, [settings.hotkeys.formatToMarkdown, content, openAiApiKey]);
 
     useEffect(() => {
         const previewEl = previewRef.current;
@@ -403,7 +409,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
     };
 
     const handleAiAction = async (action: 'summarize' | 'tag' | 'link') => {
-        if (!content.trim()) return;
+        if (!content.trim() || !openAiApiKey) return;
         setIsAiActionLoading(true);
         setAiActionError(null);
         setIsAiMenuOpen(false);
@@ -411,50 +417,51 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
             let prompt = '';
-            let updateFn: (response: string) => void;
-
+            
             switch (action) {
                 case 'summarize':
                     prompt = `Сделай краткое summary (одно-два предложения) для следующего текста:\n\n---\n\n${content}`;
-                    updateFn = (summary) => {
-                        const newContent = `> **Summary:** ${summary}\n\n---\n\n${content}`;
-                        setContent(newContent);
-                    };
+                    const summarizeResponse = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+                    setContent(`> **Summary:** ${summarizeResponse.text}\n\n---\n\n${content}`);
                     break;
                 case 'tag':
                     prompt = `Проанализируй следующий текст и предложи от 3 до 5 релевантных тегов. Ответь только в формате JSON-массива строк. Например: ["продуктивность", "идеи"].\n\n---\n\n${title}\n${content}`;
-                    updateFn = (response) => {
-                        let newTags: string[] = [];
-                        try {
-                            const cleanedResponse = response.replace(/```json/g, '').replace(/```/g, '').trim();
-                            const parsed = JSON.parse(cleanedResponse);
-                            // FIX: Safely parse and filter AI-generated tags to ensure they are always an array of strings.
-                            if (Array.isArray(parsed)) {
-                                // FIX: Replace filter with a robust for-loop to ensure correct type casting from 'unknown' to 'string' and avoid potential TS inference issues.
-                                newTags = (parsed as any[]).filter((item): item is string => typeof item === 'string');
-                            } else {
-                                throw new Error("Invalid tag format from AI");
+                    const tagResponse = await ai.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: prompt,
+                        config: { 
+                            responseMimeType: 'application/json',
+                            responseSchema: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
                             }
-                        } catch (e) {
-                            console.error("Failed to parse tags JSON:", e);
-                            newTags = response.split(',').map(t => t.trim().replace(/["'`]/g, ''));
                         }
-                        const currentTags = new Set(note.tags || []);
-                        newTags.forEach(tag => currentTags.add(tag.toLowerCase().replace(/\s/g, '-')));
-                        handleTagsChange(Array.from(currentTags));
-                    };
+                    });
+                    
+                    let newTags: string[] = [];
+                    try {
+                        const parsed = JSON.parse(tagResponse.text.trim());
+                        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+                            // FIX: Cast 'parsed' to string[] after validation to resolve TypeScript error.
+                            newTags = parsed as string[];
+                        } else {
+                            throw new Error("Parsed JSON is not an array of strings.");
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse tags JSON:", e);
+                        newTags = tagResponse.text.split(',').map(t => t.trim().replace(/["'`]/g, ''));
+                    }
+                    const currentTags = new Set(note.tags || []);
+                    newTags.forEach(tag => currentTags.add(tag.toLowerCase().replace(/\s/g, '-')));
+                    handleTagsChange(Array.from(currentTags));
                     break;
                  case 'link':
                     const otherNoteTitles = allNotes.filter(n => n.id !== note.id && n.title.trim()).map(n => n.title);
                     prompt = `Проанализируй текст заметки. Найди в нем упоминания следующих названий других заметок: [${otherNoteTitles.join(', ')}]. Если найдешь точное совпадение, оберни его в [[двойные квадратные скобки]]. Не создавай ссылки, если не уверен. Верни только измененный текст заметки, без каких-либо объяснений. Исходный текст:\n\n---\n\n${content}`;
-                    updateFn = (newContent) => {
-                        setContent(newContent);
-                    };
+                    const linkResponse = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+                    setContent(linkResponse.text);
                     break;
             }
-            
-            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-            updateFn(response.text);
 
         } catch (error) {
             console.error(`Error performing AI action "${action}":`, error);
@@ -570,7 +577,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
                         <div className="relative group" ref={aiMenuRef}>
                             <button
                                 onClick={() => setIsAiMenuOpen(p => !p)}
-                                disabled={isAiActionLoading || isFormatting || !content}
+                                disabled={isAiActionLoading || isFormatting || !content || !openAiApiKey}
                                 className="p-2 text-text-secondary hover:text-neon-purple hover:bg-neon-purple/10 rounded-full disabled:opacity-50"
                                 title="AI-действия"
                             >
@@ -662,5 +669,3 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
         </div>
     );
 };
-
-export default NoteEditor;
