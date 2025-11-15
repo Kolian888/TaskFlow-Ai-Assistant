@@ -431,7 +431,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
                             // FIX: Safely parse and filter AI-generated tags to ensure they are always an array of strings.
                             if (Array.isArray(parsed)) {
                                 // FIX: Replace filter with a robust for-loop to ensure correct type casting from 'unknown' to 'string' and avoid potential TS inference issues.
-                                newTags = (parsed as unknown[]).filter((item): item is string => typeof item === 'string');
+                                newTags = (parsed as any[]).filter((item): item is string => typeof item === 'string');
                             } else {
                                 throw new Error("Invalid tag format from AI");
                             }
