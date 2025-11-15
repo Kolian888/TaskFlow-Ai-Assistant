@@ -1,11 +1,7 @@
 
 
-
-
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys, Goal } from './types';
+import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
 import Header from './components/Header';
 import ProjectManager from './components/ProjectManager';
 import KanbanBoard from './components/KanbanBoard';
@@ -51,8 +47,6 @@ import GraphView from './components/GraphView';
 import SettingsModal from './components/SettingsModal';
 import GlobalSearchModal from './components/GlobalSearchModal';
 import CalendarView from './components/CalendarView';
-import GoalsView from './components/GoalsView';
-import GoalEditModal from './components/GoalEditModal';
 
 const APP_DATA_KEY = 'taskflow_app_data_v1';
 
@@ -174,7 +168,6 @@ const MobileMenu: React.FC<{
 const App = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [goals, setGoals] = useState<Goal[]>([]);
     const [boards, setBoards] = useState<Board[]>([]);
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [notes, setNotes] = useState<Note[]>([]);
@@ -192,7 +185,7 @@ const App = () => {
     const [projectFilter, setProjectFilter] = useState<'all' | string>('all');
     const [tagFilter, setTagFilter] = useState<'all' | string>('all');
     const [dailyQuests, setDailyQuests] = useState<Quest[]>([]);
-    type ActiveView = 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'library' | 'notes' | 'quests' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar' | 'goals';
+    type ActiveView = 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'library' | 'notes' | 'quests' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar';
     const [activeView, setActiveView] = useState<ActiveView>('dashboard');
     
     const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'project' | 'board', id: string, name: string } | null>(null);
@@ -201,7 +194,6 @@ const App = () => {
     const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
     const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
     const [boardToEdit, setBoardToEdit] = useState<Board | 'new' | null>(null);
-    const [goalToEdit, setGoalToEdit] = useState<Goal | 'new' | null>(null);
     
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
     const [notifiedTaskIds, setNotifiedTaskIds] = useState<Set<string>>(new Set());
@@ -247,6 +239,7 @@ const App = () => {
                 viewKnowledge: 'k',
                 viewGraph: 'g',
                 viewCalendar: 'v',
+// FIX: Add missing 'viewGoals' property to satisfy the Hotkeys interface.
                 viewGoals: 'alt+g',
                 quickAddTask: 'c',
                 quickAddNote: 'n',
@@ -318,7 +311,6 @@ const App = () => {
           const data = JSON.parse(savedData);
           setProjects(data.projects || []);
           setTasks(data.tasks || []);
-          setGoals(data.goals || []);
           setBoards(data.boards || [{ id: '1', name: 'Работа', columns: ['Бэклог', 'В процессе', 'Готово'], color: '#4E95F2' }, { id: '2', name: 'Личное', columns: ['Планы', 'В процессе', 'Сделано'], color: '#A371F7' }]);
           setAttachments(data.attachments || []);
           setNotes(data.notes || []);
@@ -345,7 +337,7 @@ const App = () => {
     useEffect(() => {
       try {
         const appData = {
-          projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps,
+          projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps,
           playerStats, pomodoroSettings, activeBoardId,
           notifiedTaskIds: Array.from(notifiedTaskIds),
           sidebarOrder,
@@ -354,7 +346,7 @@ const App = () => {
       } catch (e) {
         console.error("Failed to save data to localStorage", e);
       }
-    }, [projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps, playerStats, pomodoroSettings, activeBoardId, notifiedTaskIds, sidebarOrder]);
+    }, [projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps, playerStats, pomodoroSettings, activeBoardId, notifiedTaskIds, sidebarOrder]);
 
     const updateQuestProgress = useCallback((questId: string, amount = 1) => {
         setDailyQuests(prevQuests => {
@@ -437,7 +429,7 @@ const App = () => {
     const handleExportData = useCallback(() => {
         try {
             const appData = {
-              projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps,
+              projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps,
               playerStats, pomodoroSettings, activeBoardId,
               notifiedTaskIds: Array.from(notifiedTaskIds),
               sidebarOrder,
@@ -458,7 +450,7 @@ const App = () => {
             alert("Не удалось экспортировать данные.");
         }
     }, [
-        projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps,
+        projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps,
         playerStats, pomodoroSettings, activeBoardId, notifiedTaskIds, sidebarOrder
     ]);
 
@@ -478,7 +470,6 @@ const App = () => {
                     if (data.projects && data.tasks && data.boards) {
                         setProjects(data.projects || []);
                         setTasks(data.tasks || []);
-                        setGoals(data.goals || []);
                         setBoards(data.boards || []);
                         setAttachments(data.attachments || []);
                         setNotes(data.notes || []);
@@ -553,7 +544,6 @@ const App = () => {
                 viewKnowledge: () => setActiveView('knowledge'),
                 viewGraph: () => setActiveView('graph'),
                 viewCalendar: () => setActiveView('calendar'),
-                viewGoals: () => setActiveView('goals'),
                 quickAddTask: () => setIsTaskFormModalOpen(true),
                 quickAddNote: () => setIsQuickNoteOpen(true),
                 quickAddProject: () => setIsQuickProjectOpen(true),
@@ -593,6 +583,7 @@ const App = () => {
     
     const doneColumnNames = useMemo(() => new Set(boards.flatMap(b => b.columns.slice(-1))), [boards]);
 
+    // FIX: Define missing variables used for filtering and data display.
     const activeBoard = useMemo(() => boards.find(b => b.id === activeBoardId), [boards, activeBoardId]);
     
     const projectsForBoard = useMemo(() => {
@@ -800,32 +791,6 @@ const App = () => {
     const handleDeleteTask = useCallback((taskId: string) => {
         setTasks(prev => prev.filter(t => t.id !== taskId));
     }, []);
-    
-    const handleAddGoal = useCallback((name: string, description: string, targetDate: string): Goal => {
-        const newGoal: Goal = { id: crypto.randomUUID(), name, description, targetDate, status: 'in-progress' };
-        setGoals(prev => [...prev, newGoal]);
-        return newGoal;
-    }, []);
-
-    const handleUpdateGoal = useCallback((updatedGoal: Goal) => {
-        setGoals(prev => prev.map(g => g.id === updatedGoal.id ? updatedGoal : g));
-    }, []);
-
-    const handleDeleteGoal = useCallback((goalId: string) => {
-        setGoals(prev => prev.filter(g => g.id !== goalId));
-        setProjects(prev => prev.map(p => p.goalId === goalId ? { ...p, goalId: null } : p));
-    }, []);
-
-    const handleSaveGoal = (name: string, description: string, targetDate: string, goalId?: string) => {
-        if (goalId) {
-            const originalGoal = goals.find(g => g.id === goalId);
-            if (originalGoal) {
-                handleUpdateGoal({ ...originalGoal, name, description, targetDate });
-            }
-        } else {
-            handleAddGoal(name, description, targetDate);
-        }
-    };
     
     const handleFeedPet = useCallback(() => true, []);
     const handlePlayWithPet = useCallback(() => true, []);
@@ -1440,7 +1405,7 @@ const App = () => {
                     />
                 </div>
             );
-            case 'goals': return <GoalsView goals={goals} projects={projects} tasks={tasks} onAddGoal={handleAddGoal} onUpdateGoal={handleUpdateGoal} onDeleteGoal={handleDeleteGoal} doneColumnNames={doneColumnNames} onEditRequest={setGoalToEdit}/>;
+
             case 'mindmap': return <MindMapView mindMaps={mindMaps} activeMapId={activeMindMapId} onSetActiveMapId={setActiveMindMapId} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} projects={projects} tasks={tasks} isGenerating={isGeneratingMindMap} onGenerateFromProject={handleGenerateMindMapFromProject} boards={boards} onConvertToTask={handleConvertToTask} onLinkTaskToNode={handleLinkTaskToNode} onConvertToProject={handleConvertToProject} onLinkProjectToNode={handleLinkProjectToNode} />;
             case 'knowledge': return <KnowledgeBaseView notes={notes} noteFolders={noteFolders} activeNoteId={activeKnowledgeNoteId} onSetActiveNoteId={setActiveKnowledgeNoteId} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddFolder={handleAddNoteFolder} onDeleteFolder={handleDeleteNoteFolder} onNavigateToGraph={() => setActiveView('graph')} voiceCommand={null} settings={settings} />;
             case 'graph': return <GraphView notes={notes} onNavigateToNote={handleNavigateToNote} />;
@@ -1448,6 +1413,7 @@ const App = () => {
         }
     };
     
+// FIX: Replaced `JSX.Element` with `React.ReactElement` to resolve "Cannot find namespace 'JSX'" error.
     const sidebarWidgets: Record<SidebarWidgetKey, { title: string, component: React.ReactElement }> = useMemo(() => ({
         projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={handleOpenProjectEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} /> },
         form: { title: 'Добавить задачу', component: <TaskForm onAddTask={(taskData) => handleAddTask(taskData as any)} projects={projects} activeProjectId={activeProjectId} /> },
@@ -1458,7 +1424,7 @@ const App = () => {
         notifications: { title: 'Уведомления', component: <Notifications permission={notificationPermission} onRequestPermission={handleRequestNotificationPermission} tasksDueToday={tasksDueToday} /> }
     }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, handleOpenProjectEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects]);
 
-    const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph', 'calendar', 'goals'].includes(activeView);
+    const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph', 'calendar'].includes(activeView);
 
     const isSidebarVisible = !isFullScreenView && !isMobile;
 
@@ -1468,7 +1434,6 @@ const App = () => {
         { id: 'knowledge', label: 'Идеи', icon: DocumentDuplicateIcon },
         { id: 'menu', label: 'Меню', icon: MenuIcon, action: () => setIsMobileNavMenuOpen(true) },
     ];
-
     
     return (
         <div className={`min-h-screen bg-base-bg font-sans ${isMobile ? 'pb-24' : ''}`}>
@@ -1502,140 +1467,4 @@ const App = () => {
             </main>
             
             {isMobile && (
-                <div className="fixed bottom-0 left-0 right-0 bg-secondary/80 backdrop-blur-xl border-t border-border-color z-40 h-14">
-                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-highlight/50 to-transparent"></div>
-                    <div className="grid grid-cols-5 items-center h-full">
-                        {mobileNavItems.slice(0, 2).map(item => (
-                            <button key={item.id} onClick={() => item.action ? item.action() : setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
-                                {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
-                                <item.icon className="w-5 h-5" />
-                                <span className="text-[9px] font-medium">{item.label}</span>
-                            </button>
-                        ))}
-
-                        <div className="flex justify-center">
-                            <button onClick={() => setIsQuickAddOpen(true)} className="-mt-5 bg-highlight text-primary w-14 h-14 rounded-full shadow-lg shadow-highlight/30 flex items-center justify-center z-50 mx-auto active:scale-90 transition-transform">
-                                <PlusIcon className="w-7 h-7"/>
-                            </button>
-                        </div>
-
-                        {mobileNavItems.slice(2, 4).map(item => (
-                            <button key={item.id} onClick={() => item.action ? item.action() : setActiveView(item.id as any)} className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 h-14 transition-colors ${activeView === item.id ? 'text-highlight' : 'text-text-secondary'}`}>
-                                 {activeView === item.id && <div className="absolute top-0 w-8 h-1 bg-highlight rounded-b-full shadow-[0_0_10px] shadow-highlight/50"></div>}
-                                <item.icon className="w-5 h-5" />
-                                <span className="text-[9px] font-medium">{item.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <MobileMenu
-                isOpen={isMobileNavMenuOpen}
-                onClose={() => setIsMobileNavMenuOpen(false)}
-                onViewChange={(view) => {
-                    setActiveView(view);
-                    setIsMobileNavMenuOpen(false);
-                }}
-            />
-            
-            <SettingsModal 
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                settings={settings}
-                onSave={handleSaveSettings}
-                availableVoices={availableVoices}
-                onExport={handleExportData}
-                onImport={handleImportData}
-            />
-             <GlobalSearchModal
-                isOpen={isSearchOpen}
-                onClose={() => setIsSearchOpen(false)}
-                projects={projects}
-                tasks={tasks}
-                notes={notes}
-                onNavigate={handleSearchNavigate}
-            />
-            <QuickAddMenu
-                isOpen={isQuickAddOpen}
-                onClose={() => setIsQuickAddOpen(false)}
-                onAddTaskClick={() => { setIsQuickAddOpen(false); setIsTaskFormModalOpen(true); }}
-                onAddNoteClick={() => { setIsQuickAddOpen(false); setIsQuickNoteOpen(true); }}
-                onAddProjectClick={() => { setIsQuickAddOpen(false); setIsQuickProjectOpen(true); }}
-                onAddBoardClick={() => { setIsQuickAddOpen(false); setIsQuickBoardOpen(true); }}
-            />
-            <QuickAddNoteModal
-                isOpen={isQuickNoteOpen}
-                onClose={() => setIsQuickNoteOpen(false)}
-                onAddNote={(content) => { handleAddNote(content, null); setIsQuickNoteOpen(false); }}
-            />
-             <QuickAddProjectModal
-                isOpen={isQuickProjectOpen}
-                onClose={() => setIsQuickProjectOpen(false)}
-                onAddProject={handleAddProjectQuick}
-                boards={boards}
-            />
-            <QuickAddBoardModal
-                isOpen={isQuickBoardOpen}
-                onClose={() => setIsQuickBoardOpen(false)}
-                onAddBoard={handleAddBoardQuick}
-            />
-            <TaskFormModal 
-                isOpen={isTaskFormModalOpen} 
-                onClose={() => setIsTaskFormModalOpen(false)}
-                onAddTask={handleAddTaskMobile}
-                projects={projects}
-                activeProjectId={activeProjectId}
-            />
-            {itemToDelete && <ConfirmationModal title={`Подтвердите удаление`} message={`Вы уверены, что хотите удалить "${itemToDelete.name}"? Это действие нельзя будет отменить.`} onConfirm={handleConfirmDelete} onCancel={() => setItemToDelete(null)} confirmText="Удалить" confirmClass="bg-brand-red text-white" />}
-            {projectToEdit && <ProjectEditModal project={projectToEdit} initialTab={projectEditModalTab} onUpdate={handleUpdateProject} onCancel={() => setProjectToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} onOpenGallery={handleOpenGallery} goals={goals} />}
-            {taskToEdit && <TaskEditModal task={taskToEdit} onUpdate={(task) => handleUpdateTask(task)} onCancel={() => setTaskToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} onOpenGallery={handleOpenGallery} />}
-            {noteToEdit && <NoteEditModal note={noteToEdit} onUpdate={handleUpdateNote} onCancel={() => setNoteToEdit(null)} noteFolders={noteFolders} projects={projects} tasks={tasks} />}
-            {boardToEdit && <BoardEditModal isOpen={!!boardToEdit} board={boardToEdit === 'new' ? null : boardToEdit} onClose={() => setBoardToEdit(null)} onSave={(name, boardId) => { if (boardId) { handleUpdateBoard(boardId, name); } else { handleAddBoard(name); } }} />}
-            {galleryConfig.isOpen && <ImageGalleryModal images={galleryConfig.images} startIndex={galleryConfig.startIndex} onClose={handleCloseGallery} />}
-            <GoalEditModal isOpen={!!goalToEdit} goal={goalToEdit === 'new' ? null : goalToEdit} onClose={() => setGoalToEdit(null)} onSave={handleSaveGoal} />
-
-            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} // FIX: Pass handleAddAttachment instead of non-existent onAddAttachment 
- onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
-            <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
-            <CharacterSwitchModal isOpen={isCharacterSwitchOpen} onClose={() => setIsCharacterSwitchOpen(false)} onSwitch={handleCharacterSwitch} unlockedTypes={playerStats.unlockedCharacterTypes} activeType={playerStats.characterType} />
-            <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} playerStats={playerStats} onUnlockColor={handleUnlockPetColor} onSelectColor={handleSelectPetColor} onUnlockCharacterType={handleUnlockCharacterType} />
-            
-            <motion.button
-                onClick={() => setIsAiAssistantOpen(true)}
-                className="fixed bottom-36 lg:bottom-8 right-4 w-16 h-16 rounded-full flex items-center justify-center z-40 bg-gradient-to-br from-neon-purple to-neon-blue text-white shadow-lg shadow-neon-purple/30"
-                aria-label="Открыть AI ассистента"
-                whileHover={{ scale: 1.1, rotate: [0, 15, -10, 0] }}
-                transition={{ duration: 0.3 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                <SparklesIcon className="w-8 h-8" />
-            </motion.button>
-            <motion.button
-                onClick={handleVoiceInput}
-                className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg lg:hidden"
-                aria-label="Активировать голосовое управление"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                {isListening && (
-                    <motion.div
-                        className="absolute inset-0 rounded-full bg-neon-purple"
-                        animate={{
-                            scale: [1, 1.4, 1],
-                            opacity: [0.7, 0, 0.7],
-                        }}
-                        transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                        }}
-                    />
-                )}
-                <MicrophoneIcon className="w-7 h-7 relative" />
-            </motion.button>
-        </div>
-    );
-};
-
-export default App;
+                <div className="fixed bottom-0 left-0 right-0 bg-secondary

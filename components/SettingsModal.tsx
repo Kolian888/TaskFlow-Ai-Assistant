@@ -32,7 +32,6 @@ const HotkeyInput: React.FC<HotkeyInputProps> = ({ value, onCapture, isDuplicate
     return (
         <div className="relative flex items-center">
             {isDuplicate && (
-                // FIX: Wrap the icon in a span with a title attribute to provide a tooltip without passing an invalid prop to the SVG component.
                 <span title="Эта комбинация уже используется">
                     <ExclamationTriangleIcon className="w-5 h-5 text-brand-yellow absolute -left-6" />
                 </span>
@@ -216,6 +215,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                             <p className="text-sm font-semibold text-text-primary text-left">{theme.name}</p>
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-text-secondary mb-3">Интеллектуальные функции</h3>
+                                <div className="space-y-3 p-4 bg-primary rounded-xl border border-border-color">
+                                    <div className="flex items-start justify-between">
+                                        <label htmlFor="ai-assistant-toggle" className="text-text-primary cursor-pointer max-w-xs">
+                                            Включить AI Ассистента
+                                            <p className="text-xs text-text-secondary mt-1">Включает AI-помощника, голосовое управление и другие интеллектуальные функции.</p>
+                                        </label>
+                                        <label className="relative inline-flex items-center cursor-pointer mt-1 flex-shrink-0">
+                                            <input type="checkbox" id="ai-assistant-toggle" className="sr-only peer"
+                                                checked={localSettings.enableAiAssistant}
+                                                onChange={(e) => handleSettingChange('enableAiAssistant', e.target.checked)}
+                                            />
+                                            <div className="w-11 h-6 bg-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-highlight rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-highlight"></div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                             <div>

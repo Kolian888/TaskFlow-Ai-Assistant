@@ -26,9 +26,10 @@ interface MindMapViewProps {
     onLinkTaskToNode: (mapId: string, nodeId: string, taskId: string) => void;
     onConvertToProject: (mapId: string, nodeId: string) => void;
     onLinkProjectToNode: (mapId: string, nodeId: string, projectId: string) => void;
+    enableAi: boolean;
 }
 
-const MindMapView: React.FC<MindMapViewProps> = ({ mindMaps, activeMapId, onSetActiveMapId, onAddMindMap, onUpdateMindMap, onDeleteMindMap, onAddMindMapNode, onUpdateMindMapNode, onDeleteMindMapNode, projects, tasks, boards, isGenerating, onGenerateFromProject, onConvertToTask, onLinkTaskToNode, onConvertToProject, onLinkProjectToNode }) => {
+const MindMapView: React.FC<MindMapViewProps> = ({ mindMaps, activeMapId, onSetActiveMapId, onAddMindMap, onUpdateMindMap, onDeleteMindMap, onAddMindMapNode, onUpdateMindMapNode, onDeleteMindMapNode, projects, tasks, boards, isGenerating, onGenerateFromProject, onConvertToTask, onLinkTaskToNode, onConvertToProject, onLinkProjectToNode, enableAi }) => {
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -261,7 +262,7 @@ const MindMapView: React.FC<MindMapViewProps> = ({ mindMaps, activeMapId, onSetA
                      <button onClick={handleCreateNewMap} className="w-full flex items-center justify-center gap-2 p-2.5 bg-highlight/80 text-primary font-bold rounded-xl hover:bg-highlight">
                          <PlusIcon className="w-5 h-5"/> {!isSidebarCollapsed && 'Новая карта'}
                      </button>
-                     <button onClick={() => setIsProjectModalOpen(true)} disabled={isGenerating} className="w-full flex items-center justify-center gap-2 p-2.5 bg-neon-purple/80 text-white font-bold rounded-xl hover:bg-neon-purple disabled:opacity-50">
+                     <button onClick={() => setIsProjectModalOpen(true)} disabled={isGenerating || !enableAi} className="w-full flex items-center justify-center gap-2 p-2.5 bg-neon-purple/80 text-white font-bold rounded-xl hover:bg-neon-purple disabled:opacity-50">
                         <SparklesIcon className={`w-5 h-5 ${isGenerating ? 'animate-spin' : ''}`}/> {!isSidebarCollapsed && (isGenerating ? 'Генерация...' : 'Создать из проекта')}
                     </button>
                  </div>

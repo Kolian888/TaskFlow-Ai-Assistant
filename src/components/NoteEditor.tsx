@@ -5,7 +5,7 @@ import { TrashIcon, TagIcon, XIcon, ListBulletIcon, SparklesIcon, DocumentTextIc
 // @ts-ignore
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 
 interface NoteEditorProps {
@@ -20,7 +20,6 @@ interface NoteEditorProps {
     voiceCommand: { command: string; payload: string; timestamp: number } | null;
     // FIX: Update the 'settings' prop to use the 'Settings' type for proper type checking.
     settings: Settings;
-    openAiApiKey: string | null;
 }
 
 const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => {
@@ -161,8 +160,7 @@ const FormattingToolbar: React.FC<{ onAction: (syntax: string) => void }> = ({ o
     );
 };
 
-// FIX: Changed to a named export to resolve module resolution issues.
-export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNotes, onAddNote, onNoteLinkClick, onCreateNoteFromLink, onNavigateToGraph, voiceCommand, settings, openAiApiKey }) => {
+const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNotes, onAddNote, onNoteLinkClick, onCreateNoteFromLink, onNavigateToGraph, voiceCommand, settings }) => {
     const [title, setTitle] = useState(note.title);
     const [content, setContent] = useState(note.content);
     const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
@@ -251,7 +249,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
         if (!textarea) return;
 
         const handleKeyDown = async (e: KeyboardEvent) => {
-            if (!openAiApiKey) return;
             const pressedCombo = [
                 (e.ctrlKey || e.metaKey) && 'ctrl',
                 e.altKey && 'alt',
@@ -273,11 +270,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
                 try {
                     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
                     const prompt = `Please analyze the following text and convert it into well-structured Markdown format. Use headings, lists, bold, italics, and other Markdown features as appropriate to best represent the structure and intent of the original text. Return only the Markdown formatted text, without any additional explanations or commentary. The original text is:\n\n---\n\n${selectedText}`;
-                    const response = await ai.models.generateContent({
-                        model: 'gemini-2.5-flash',
-                        contents: prompt
-                    });
-                    const formattedText = response.text || '';
+                    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+                    const formattedText = response.text.trim();
                     
                     const newContent = `${textarea.value.substring(0, start)}${formattedText}${textarea.value.substring(end)}`;
                     setContent(newContent);
@@ -300,7 +294,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
         return () => {
             textarea.removeEventListener('keydown', handleKeyDown);
         };
-    }, [settings.hotkeys.formatToMarkdown, content, openAiApiKey]);
+    }, [settings.hotkeys.formatToMarkdown, content]);
 
     useEffect(() => {
         const previewEl = previewRef.current;
@@ -409,7 +403,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
     };
 
     const handleAiAction = async (action: 'summarize' | 'tag' | 'link') => {
-        if (!content.trim() || !openAiApiKey) return;
+        if (!content.trim()) return;
         setIsAiActionLoading(true);
         setAiActionError(null);
         setIsAiMenuOpen(false);
@@ -417,51 +411,50 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
             let prompt = '';
-            
+            let updateFn: (response: string) => void;
+
             switch (action) {
                 case 'summarize':
                     prompt = `Сделай краткое summary (одно-два предложения) для следующего текста:\n\n---\n\n${content}`;
-                    const summarizeResponse = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-                    setContent(`> **Summary:** ${summarizeResponse.text}\n\n---\n\n${content}`);
+                    updateFn = (summary) => {
+                        const newContent = `> **Summary:** ${summary}\n\n---\n\n${content}`;
+                        setContent(newContent);
+                    };
                     break;
                 case 'tag':
                     prompt = `Проанализируй следующий текст и предложи от 3 до 5 релевантных тегов. Ответь только в формате JSON-массива строк. Например: ["продуктивность", "идеи"].\n\n---\n\n${title}\n${content}`;
-                    const tagResponse = await ai.models.generateContent({
-                        model: 'gemini-2.5-flash',
-                        contents: prompt,
-                        config: { 
-                            responseMimeType: 'application/json',
-                            responseSchema: {
-                                type: Type.ARRAY,
-                                items: { type: Type.STRING }
+                    updateFn = (response) => {
+                        let newTags: string[] = [];
+                        try {
+                            const cleanedResponse = response.replace(/```json/g, '').replace(/```/g, '').trim();
+                            const parsed = JSON.parse(cleanedResponse);
+                            // FIX: Safely parse and filter AI-generated tags to ensure they are always an array of strings.
+                            if (Array.isArray(parsed)) {
+// FIX: Change 'unknown' to 'any' to match the type of items in 'parsed' (any[]), resolving the type mismatch error.
+                                newTags = parsed.filter((item: any): item is string => typeof item === 'string');
+                            } else {
+                                throw new Error("Invalid tag format from AI");
                             }
+                        } catch (e) {
+                            console.error("Failed to parse tags JSON:", e);
+                            newTags = response.split(',').map(t => t.trim().replace(/["'`]/g, ''));
                         }
-                    });
-                    
-                    let newTags: string[] = [];
-                    try {
-                        const parsed = JSON.parse(tagResponse.text.trim());
-                        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-                            // FIX: Cast 'parsed' to string[] after validation to resolve TypeScript error.
-                            newTags = parsed as string[];
-                        } else {
-                            throw new Error("Parsed JSON is not an array of strings.");
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse tags JSON:", e);
-                        newTags = tagResponse.text.split(',').map(t => t.trim().replace(/["'`]/g, ''));
-                    }
-                    const currentTags = new Set(note.tags || []);
-                    newTags.forEach(tag => currentTags.add(tag.toLowerCase().replace(/\s/g, '-')));
-                    handleTagsChange(Array.from(currentTags));
+                        const currentTags = new Set(note.tags || []);
+                        newTags.forEach(tag => currentTags.add(tag.toLowerCase().replace(/\s/g, '-')));
+                        handleTagsChange(Array.from(currentTags));
+                    };
                     break;
                  case 'link':
                     const otherNoteTitles = allNotes.filter(n => n.id !== note.id && n.title.trim()).map(n => n.title);
                     prompt = `Проанализируй текст заметки. Найди в нем упоминания следующих названий других заметок: [${otherNoteTitles.join(', ')}]. Если найдешь точное совпадение, оберни его в [[двойные квадратные скобки]]. Не создавай ссылки, если не уверен. Верни только измененный текст заметки, без каких-либо объяснений. Исходный текст:\n\n---\n\n${content}`;
-                    const linkResponse = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-                    setContent(linkResponse.text);
+                    updateFn = (newContent) => {
+                        setContent(newContent);
+                    };
                     break;
             }
+            
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            updateFn(response.text);
 
         } catch (error) {
             console.error(`Error performing AI action "${action}":`, error);
@@ -577,7 +570,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
                         <div className="relative group" ref={aiMenuRef}>
                             <button
                                 onClick={() => setIsAiMenuOpen(p => !p)}
-                                disabled={isAiActionLoading || isFormatting || !content || !openAiApiKey}
+                                disabled={isAiActionLoading || isFormatting || !content}
                                 className="p-2 text-text-secondary hover:text-neon-purple hover:bg-neon-purple/10 rounded-full disabled:opacity-50"
                                 title="AI-действия"
                             >
@@ -621,51 +614,4 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
                     <AnimatePresence>
                         {linkSuggestions.active && (
                             <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                style={{ top: linkSuggestions.position.top, left: linkSuggestions.position.left }}
-                                className="absolute z-50 bg-secondary border border-border-color rounded-lg shadow-lg w-72 flex flex-col overflow-hidden"
-                            >
-                                <div ref={suggestionListRef} className="max-h-48 overflow-y-auto">
-                                    {linkSuggestions.suggestions.length > 0 ? linkSuggestions.suggestions.map((s, i) => (
-                                        <button
-                                            key={s.id}
-                                            onClick={() => handleSelectSuggestion(s.title)}
-                                            className={`w-full text-left px-3 py-2 text-sm truncate ${i === linkSuggestions.selectedIndex ? 'bg-highlight text-primary' : 'text-text-primary hover:bg-accent'}`}
-                                        >
-                                            {s.title}
-                                        </button>
-                                    )) : <div className="px-3 py-2 text-sm text-text-secondary">Идеи не найдены...</div>}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                    <textarea
-                        ref={textareaRef}
-                        value={content}
-                        onChange={e => {
-                            setContent(e.target.value);
-                            checkSuggestions(e.currentTarget);
-                        }}
-                        onKeyUp={e => checkSuggestions(e.currentTarget)}
-                        onClick={e => checkSuggestions(e.currentTarget)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Начни писать здесь... Используй [[Название идеи]], чтобы создавать связи!"
-                        className="w-full h-full p-6 bg-transparent outline-none resize-none leading-relaxed text-text-primary placeholder:text-text-secondary/50"
-                    />
-                </div>
-                <div className="w-1/2 h-full border-l border-border-color flex flex-col">
-                     <div className="p-2 border-b border-border-color text-center text-xs font-bold text-text-secondary uppercase flex-shrink-0">
-                        Предпросмотр
-                    </div>
-                    <div
-                        ref={previewRef}
-                        className="prose prose-sm prose-invert max-w-none w-full flex-grow p-6 overflow-y-auto leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: processedHtml }}
-                    />
-                </div>
-            </div>
-        </div>
-    );
-};
+                                initial={{ opacity: 0, y: 10, scale: 0.9

@@ -18,9 +18,10 @@ interface ProjectManagerProps {
     boards: Board[];
     activeBoardId: string | null;
     allAttachments: Attachment[];
+    enableAi: boolean;
 }
 
-const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, activeProjectId, onAddProject, onSelectProject, onEditRequest, onDeleteRequest, onDuplicateRequest, allTags, boards, activeBoardId, allAttachments }) => {
+const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, activeProjectId, onAddProject, onSelectProject, onEditRequest, onDeleteRequest, onDuplicateRequest, allTags, boards, activeBoardId, allAttachments, enableAi }) => {
     const [newProjectName, setNewProjectName] = useState('');
     const [newProjectColor, setNewProjectColor] = useState('#A371F7');
     const [newProjectEmoji, setNewProjectEmoji] = useState('💡');
@@ -35,6 +36,9 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
     const [isRateLimited, setIsRateLimited] = useState(false);
     
     useEffect(() => {
+        if (!enableAi) return;
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    
         const generateFocusAssessment = async (project: Project, projectTasks: Task[]) => {
             const completedTasks = projectTasks.filter(t => t.status === 'Готово').length;
             const activeTasks = projectTasks.length - completedTasks;
@@ -62,12 +66,9 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
 
                 Сгенерируй наиболее подходящий комментарий для текущего проекта.
             `;
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-            });
-            return response.text || '';
+    
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            return response.text;
         };
     
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -83,18 +84,28 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
                 if (projectTasks.length > 0 && !generatingAssessments.has(project.id) && !aiAssessments[project.id]) {
                     setGeneratingAssessments(prev => new Set(prev).add(project.id));
                     try {
-                        await sleep(1100); // Small delay to avoid instant burst
+                        await sleep(4100); // Small delay to avoid instant burst
                         const assessmentText = await generateFocusAssessment(project, projectTasks);
                         if (assessmentText) {
                             setAiAssessments(prev => ({ ...prev, [project.id]: assessmentText }));
                         }
                     } catch (error: any) {
                         console.error(`Error generating assessment for project ${project.id}:`, error);
+    
+                        let isQuotaError = false;
                         const errorString = JSON.stringify(error).toLowerCase();
-                        if (errorString.includes('quota') || errorString.includes('rate limit')) {
+                        if (
+                            errorString.includes('429') ||
+                            errorString.includes('resource_exhausted') ||
+                            errorString.includes('quota')
+                        ) {
+                            isQuotaError = true;
+                        }
+    
+                        if (isQuotaError) {
                             setIsRateLimited(true);
                             setAiAssessments(prev => ({ ...prev, [project.id]: "Достигнут лимит запросов." }));
-                            break;
+                            break; 
                         } else {
                             setAiAssessments(prev => ({ ...prev, [project.id]: "Ошибка анализа." }));
                         }
@@ -112,7 +123,7 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
         const timer = setTimeout(updateAssessments, 1000);
         return () => clearTimeout(timer);
     
-    }, [projects, tasks, isRateLimited, aiAssessments, generatingAssessments]);
+    }, [projects, tasks, isRateLimited, aiAssessments, generatingAssessments, enableAi]);
 
 
     useEffect(() => {
@@ -153,7 +164,7 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
 
     return (
         <>
-            {isRateLimited && (
+            {enableAi && isRateLimited && (
                 <div className="bg-brand-red/10 border border-brand-red/30 text-brand-red text-sm p-3 rounded-xl mb-4">
                     Достигнут лимит запросов к AI. Оценки временно недоступны.
                 </div>
@@ -224,7 +235,7 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, tasks, active
                                     </div>
                                 )}
 
-                                {(aiAssessments[project.id] || (generatingAssessments.has(project.id) && projectTasks.length > 0)) && (
+                                {enableAi && (aiAssessments[project.id] || (generatingAssessments.has(project.id) && projectTasks.length > 0)) && (
                                     <div className="mt-2 pl-12 z-10">
                                         <div className="flex items-start gap-1.5 p-2 bg-primary/40 rounded-md">
                                             <SparklesIcon className="w-4 h-4 text-neon-purple flex-shrink-0 mt-0.5" />

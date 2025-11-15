@@ -1,8 +1,6 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-// FIX: Replaced OpenAI with GoogleGenAI and added Type for schema definitions.
-import { GoogleGenAI, Type } from '@google/genai';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys, Goal } from './types';
 import Header from './components/Header';
 import ProjectManager from './components/ProjectManager';
@@ -29,6 +27,7 @@ import NotesView from './components/NotesView';
 import NoteEditModal from './components/NoteEditModal';
 import QuestsView from './components/QuestsView';
 import { RANKS } from './ranks';
+import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import CharacterSwitchModal from './components/CharacterSwitchModal';
 import { PencilIcon, PlusIcon, TrashIcon, KanbanIcon, LayersIcon, ArrowPathIcon, DocumentDuplicateIcon, FolderOpenIcon, ChartBarIcon, TrophyIcon, SparklesIcon, HeartIcon, HomeIcon, MicrophoneIcon, MenuIcon, CalendarDaysIcon, MindMapIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from './components/Icons';
 import HabitTracker from './components/HabitTracker';
@@ -259,6 +258,7 @@ const App = () => {
             selectedVoiceURI: null,
             showHotkeyTooltips: true,
             theme: 'dark_default',
+            enableAiAssistant: true,
         };
         try {
             const saved = localStorage.getItem('taskflow_settings');
@@ -557,7 +557,7 @@ const App = () => {
                 quickAddBoard: () => setIsQuickBoardOpen(true),
                 toggleSettings: () => setIsSettingsOpen(prev => !prev),
                 toggleQuickAdd: () => setIsQuickAddOpen(prev => !prev),
-                toggleAI: () => setIsAiAssistantOpen(prev => !prev),
+                toggleAI: () => settings.enableAiAssistant && setIsAiAssistantOpen(prev => !prev),
                 toggleSearch: () => setIsSearchOpen(prev => !prev),
             };
     
@@ -572,7 +572,7 @@ const App = () => {
     
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [settings.hotkeys, isMobile, isSearchOpen]);
+    }, [settings.hotkeys, isMobile, isSearchOpen, settings.enableAiAssistant]);
 
 
 
@@ -890,11 +890,11 @@ const App = () => {
     }, [activeMindMapId]);
 
     const handleGenerateMindMapFromProject = useCallback(async (projectId: string): Promise<MindMap | null> => {
+        if (!settings.enableAiAssistant) return null;
         const project = projects.find(p => p.id === projectId);
         if (!project) return null;
         setIsGeneratingMindMap(true);
         try {
-            // FIX: Replaced OpenAI with GoogleGenAI according to guidelines.
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
             const projectTasks = tasks.filter(t => t.projectId === projectId);
             const taskData = projectTasks.map(t => ({
@@ -903,7 +903,6 @@ const App = () => {
             }));
             const prompt = `Generate a mind map structure for the project '${project.name}'. The root node is the project. Its children are the tasks. Each task's children are its subtasks. Project tasks data: ${JSON.stringify(taskData)}. Provide the output as a nested JSON object with 'label' and 'children' properties.`;
             
-            // FIX: Updated to use ai.models.generateContent with JSON response schema.
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
@@ -921,12 +920,7 @@ const App = () => {
                                         label: { type: Type.STRING },
                                         children: {
                                             type: Type.ARRAY,
-                                            items: {
-                                                type: Type.OBJECT,
-                                                properties: {
-                                                    label: { type: Type.STRING }
-                                                }
-                                            }
+                                            items: { type: Type.OBJECT, properties: { label: { type: Type.STRING } } }
                                         }
                                     }
                                 }
@@ -964,7 +958,7 @@ const App = () => {
             setIsGeneratingMindMap(false);
         }
         return null;
-    }, [projects, tasks, handleAddMindMap]);
+    }, [projects, tasks, handleAddMindMap, settings.enableAiAssistant]);
 
     const handleAddMindMapNode = (
         mapId: string,
@@ -1147,50 +1141,6 @@ const App = () => {
         }
         setIsSearchOpen(false);
     }, [tasks, projects]);
-
-    const handleGenerateReport = useCallback(async (): Promise<string> => {
-        try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-            
-            const completedTasks = tasks.filter(t => doneColumnNames.has(t.status)).length;
-            const activeTasks = tasks.length - completedTasks;
-            
-            const prompt = `
-                Ты — AI-коуч по продуктивности в приложении TaskFlow.
-                Проанализируй следующие данные и дай краткий (3-4 абзаца), вдохновляющий и полезный отчет для пользователя на русском языке.
-                Обратись к пользователю по имени, если оно известно (${playerStats.characterName || 'пользователь'}).
-                Используй Markdown для форматирования.
-    
-                ДАННЫЕ:
-                - Уровень: ${playerStats.level}
-                - Ранг: ${playerStats.rank.name}
-                - Всего задач: ${tasks.length}
-                - Выполнено: ${completedTasks}
-                - В процессе: ${activeTasks}
-                - Количество проектов: ${projects.length}
-                - Количество привычек: ${habits.length}
-    
-                ЧТО НУЖНО СДЕЛАТЬ:
-                1. Похвали за достигнутое (уровень, выполненные задачи).
-                2. Обрати внимание на баланс между выполненными и активными задачами. Дай совет.
-                3. Предложи сфокусироваться на одном из проектов или привычек.
-                4. Закончи отчет мотивирующей фразой.
-            `;
-    
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-            });
-    
-            return response.text || "Не удалось сгенерировать отчет.";
-        } catch (error: any) {
-            console.error("Error generating AI report:", error);
-            if (error.status === 429) {
-                return "Вы превысили лимит запросов к API. Пожалуйста, попробуйте позже.";
-            }
-            return "Произошла ошибка при генерации отчета.";
-        }
-    }, [tasks, projects, habits, playerStats, doneColumnNames]);
 
     useEffect(() => {
         speechRecognitionDependenciesRef.current = {
@@ -1463,11 +1413,12 @@ const App = () => {
                         isMobile={isMobile}
                         allAttachments={attachments}
                         onOpenAiWithContext={handleOpenAiWithContext}
+                        enableAi={settings.enableAiAssistant}
                       />
                     </>
                 );
             case 'para': return <ParaView projects={projects} boards={boards} notes={notes} tasks={tasks} isMobile={isMobile} allAttachments={attachments}/>;
-            case 'stats': return <Statistics tasks={tasks} projects={projects} playerStats={playerStats} onGenerateReport={handleGenerateReport} />;
+            case 'stats': return <Statistics tasks={tasks} projects={projects} playerStats={playerStats} onGenerateReport={async () => "Report generated"} enableAi={settings.enableAiAssistant} />;
             case 'achievements': return <Achievements playerStats={playerStats} onFeed={handleFeedPet} onPlay={handlePlayWithPet} onBathe={handleBathePet} onToggleSleep={handleTogglePetSleep} onPet={() => true} onOpenStore={() => setIsStoreOpen(true)} onSwitchRequest={() => setIsCharacterSwitchOpen(true)} />;
             case 'library': return <FileLibrary attachments={attachments} projects={projects} tasks={tasks} onDeleteAttachment={() => {}} />;
             case 'notes': return <NotesView notes={notes} noteFolders={noteFolders} projects={projects} tasks={tasks} onAddNote={handleAddNote} onDeleteNote={handleDeleteNote} onEditNoteRequest={setNoteToEdit} onAddFolder={handleAddNoteFolder} onUpdateFolder={handleUpdateNoteFolder} onDeleteFolder={handleDeleteNoteFolder} isMobile={isMobile} />;
@@ -1489,7 +1440,7 @@ const App = () => {
                 </div>
             );
             case 'goals': return <GoalsView goals={goals} projects={projects} tasks={tasks} onAddGoal={handleAddGoal} onUpdateGoal={handleUpdateGoal} onDeleteGoal={handleDeleteGoal} doneColumnNames={doneColumnNames} onEditRequest={setGoalToEdit}/>;
-            case 'mindmap': return <MindMapView mindMaps={mindMaps} activeMapId={activeMindMapId} onSetActiveMapId={setActiveMindMapId} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} projects={projects} tasks={tasks} isGenerating={isGeneratingMindMap} onGenerateFromProject={handleGenerateMindMapFromProject} boards={boards} onConvertToTask={handleConvertToTask} onLinkTaskToNode={handleLinkTaskToNode} onConvertToProject={handleConvertToProject} onLinkProjectToNode={handleLinkProjectToNode} />;
+            case 'mindmap': return <MindMapView mindMaps={mindMaps} activeMapId={activeMindMapId} onSetActiveMapId={setActiveMindMapId} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} projects={projects} tasks={tasks} isGenerating={isGeneratingMindMap} onGenerateFromProject={handleGenerateMindMapFromProject} boards={boards} onConvertToTask={handleConvertToTask} onLinkTaskToNode={handleLinkTaskToNode} onConvertToProject={handleConvertToProject} onLinkProjectToNode={handleLinkProjectToNode} enableAi={settings.enableAiAssistant} />;
             case 'knowledge': return <KnowledgeBaseView notes={notes} noteFolders={noteFolders} activeNoteId={activeKnowledgeNoteId} onSetActiveNoteId={setActiveKnowledgeNoteId} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddFolder={handleAddNoteFolder} onDeleteFolder={handleDeleteNoteFolder} onNavigateToGraph={() => setActiveView('graph')} voiceCommand={null} settings={settings} />;
             case 'graph': return <GraphView notes={notes} onNavigateToNote={handleNavigateToNote} />;
             case 'calendar': return <CalendarView tasks={tasks} projects={projects} onUpdateTask={handleUpdateTask} onEditRequest={setTaskToEdit} />;
@@ -1497,14 +1448,14 @@ const App = () => {
     };
     
     const sidebarWidgets: Record<SidebarWidgetKey, { title: string, component: React.ReactElement }> = useMemo(() => ({
-        projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={handleOpenProjectEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} /> },
+        projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={handleOpenProjectEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} enableAi={settings.enableAiAssistant} /> },
         form: { title: 'Добавить задачу', component: <TaskForm onAddTask={(taskData) => handleAddTask(taskData as any)} projects={projects} activeProjectId={activeProjectId} /> },
         pet: { title: 'Питомец', component: <FocusPet stats={playerStats} /> },
         quests: { title: 'Ежедневные квесты', component: <DailyQuests quests={dailyQuests} /> },
         notes: { title: 'Быстрые Заметки', component: <Notes notes={notes} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} /> },
         pomodoro: { title: 'Помодоро', component: <PomodoroTimer activeTask={activePomodoroTask} onComplete={handlePomodoroComplete} onCancel={handleCancelPomodoro} pomodoroSettings={pomodoroSettings} onSettingsChange={setPomodoroSettings} isActive={isPomodoroActive} setIsActive={setIsPomodoroActive} timeRemaining={pomodoroTimeRemaining} setTimeRemaining={setPomodoroTimeRemaining} /> },
         notifications: { title: 'Уведомления', component: <Notifications permission={notificationPermission} onRequestPermission={handleRequestNotificationPermission} tasksDueToday={tasksDueToday} /> }
-    }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, handleOpenProjectEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects]);
+    }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, handleOpenProjectEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects, settings.enableAiAssistant]);
 
     const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph', 'calendar', 'goals'].includes(activeView);
 
@@ -1516,7 +1467,7 @@ const App = () => {
         { id: 'knowledge', label: 'Идеи', icon: DocumentDuplicateIcon },
         { id: 'menu', label: 'Меню', icon: MenuIcon, action: () => setIsMobileNavMenuOpen(true) },
     ];
-
+    
     return (
         <div className={`min-h-screen bg-base-bg font-sans ${isMobile ? 'pb-24' : ''}`}>
             <Header 
@@ -1642,44 +1593,47 @@ const App = () => {
             {galleryConfig.isOpen && <ImageGalleryModal images={galleryConfig.images} startIndex={galleryConfig.startIndex} onClose={handleCloseGallery} />}
             <GoalEditModal isOpen={!!goalToEdit} goal={goalToEdit === 'new' ? null : goalToEdit} onClose={() => setGoalToEdit(null)} onSave={handleSaveGoal} />
 
-            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
+            {settings.enableAiAssistant && (
+                <>
+                    <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
+                    <motion.button
+                        onClick={() => setIsAiAssistantOpen(true)}
+                        className="fixed bottom-36 lg:bottom-8 right-4 w-16 h-16 rounded-full flex items-center justify-center z-40 bg-gradient-to-br from-neon-purple to-neon-blue text-white shadow-lg shadow-neon-purple/30"
+                        aria-label="Открыть AI ассистента"
+                        whileHover={{ scale: 1.1, rotate: [0, 15, -10, 0] }}
+                        transition={{ duration: 0.3 }}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        <SparklesIcon className="w-8 h-8" />
+                    </motion.button>
+                    <motion.button
+                        onClick={handleVoiceInput}
+                        className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg lg:hidden"
+                        aria-label="Активировать голосовое управление"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        {isListening && (
+                            <motion.div
+                                className="absolute inset-0 rounded-full bg-neon-purple"
+                                animate={{
+                                    scale: [1, 1.4, 1],
+                                    opacity: [0.7, 0, 0.7],
+                                }}
+                                transition={{
+                                    duration: 1.5,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
+                            />
+                        )}
+                        <MicrophoneIcon className="w-7 h-7 relative" />
+                    </motion.button>
+                </>
+            )}
             <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
             <CharacterSwitchModal isOpen={isCharacterSwitchOpen} onClose={() => setIsCharacterSwitchOpen(false)} onSwitch={handleCharacterSwitch} unlockedTypes={playerStats.unlockedCharacterTypes} activeType={playerStats.characterType} />
             <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} playerStats={playerStats} onUnlockColor={handleUnlockPetColor} onSelectColor={handleSelectPetColor} onUnlockCharacterType={handleUnlockCharacterType} />
-            
-            <motion.button
-                onClick={() => setIsAiAssistantOpen(true)}
-                className="fixed bottom-36 lg:bottom-8 right-4 w-16 h-16 rounded-full flex items-center justify-center z-40 bg-gradient-to-br from-neon-purple to-neon-blue text-white shadow-lg shadow-neon-purple/30"
-                aria-label="Открыть AI ассистента"
-                whileHover={{ scale: 1.1, rotate: [0, 15, -10, 0] }}
-                transition={{ duration: 0.3 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                <SparklesIcon className="w-8 h-8" />
-            </motion.button>
-            <motion.button
-                onClick={handleVoiceInput}
-                className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center z-40 bg-secondary/80 backdrop-blur-md text-text-primary shadow-lg lg:hidden"
-                aria-label="Активировать голосовое управление"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                {isListening && (
-                    <motion.div
-                        className="absolute inset-0 rounded-full bg-neon-purple"
-                        animate={{
-                            scale: [1, 1.4, 1],
-                            opacity: [0.7, 0, 0.7],
-                        }}
-                        transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                        }}
-                    />
-                )}
-                <MicrophoneIcon className="w-7 h-7 relative" />
-            </motion.button>
         </div>
     );
 };

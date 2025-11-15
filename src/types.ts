@@ -1,13 +1,5 @@
 import React from 'react';
 
-export interface Goal {
-  id: string;
-  name: string;
-  description?: string;
-  targetDate?: string;
-  status: 'in-progress' | 'completed' | 'on-hold' | 'archived';
-}
-
 export interface Board {
   id: string;
   name: string;
@@ -69,8 +61,6 @@ export interface Project {
   tags?: string[];
   attachmentIds?: string[];
   archived?: boolean;
-// FIX: Add missing goalId property to Project interface.
-  goalId?: string | null;
 }
 
 export type CharacterType = 'spark' | 'cat' | 'dog' | 'labubu' | 'dragon' | 'unicorn' | 'phoenix' | 'cthulhu';
@@ -205,9 +195,8 @@ export interface Hotkeys {
     viewMindMap: string;
     viewKnowledge: string;
     viewGraph: string;
-    // FIX: Added missing hotkey definitions for Calendar and Goals views.
+    // FIX: Add 'viewCalendar' to satisfy usage in src/App.tsx
     viewCalendar: string;
-    viewGoals: string;
     quickAddTask: string;
     quickAddNote: string;
     quickAddProject: string;
@@ -224,6 +213,4 @@ export interface Settings {
     enableTts: boolean;
     selectedVoiceURI: string | null;
     showHotkeyTooltips: boolean;
-// FIX: Add missing 'theme' property to Settings interface.
-    theme: string;
 }

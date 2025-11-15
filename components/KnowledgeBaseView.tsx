@@ -3,8 +3,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Note, NoteFolder, Settings } from '../types';
 import { PlusIcon, DocumentDuplicateIcon, TagIcon, SparklesIcon, LayersIcon, PencilIcon } from './Icons';
 import { motion, AnimatePresence } from 'framer-motion';
-// FIX: Changed to named import for NoteEditor to resolve module resolution error.
-import { NoteEditor } from './NoteEditor';
+import NoteEditor from './NoteEditor';
 import BacklinksPanel from './BacklinksPanel';
 
 interface KnowledgeBaseViewProps {

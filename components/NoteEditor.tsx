@@ -5,7 +5,7 @@ import { TrashIcon, TagIcon, XIcon, ListBulletIcon, SparklesIcon, DocumentTextIc
 // @ts-ignore
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 
 interface NoteEditorProps {
@@ -160,8 +160,7 @@ const FormattingToolbar: React.FC<{ onAction: (syntax: string) => void }> = ({ o
     );
 };
 
-// FIX: Changed to a named export to resolve module resolution issues.
-export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNotes, onAddNote, onNoteLinkClick, onCreateNoteFromLink, onNavigateToGraph, voiceCommand, settings }) => {
+const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNotes, onAddNote, onNoteLinkClick, onCreateNoteFromLink, onNavigateToGraph, voiceCommand, settings }) => {
     const [title, setTitle] = useState(note.title);
     const [content, setContent] = useState(note.content);
     const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
@@ -259,6 +258,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
 
             if (pressedCombo === settings.hotkeys.formatToMarkdown) {
                 e.preventDefault();
+                if (!settings.enableAiAssistant) return;
                 
                 const start = textarea.selectionStart;
                 const end = textarea.selectionEnd;
@@ -271,11 +271,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
                 try {
                     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
                     const prompt = `Please analyze the following text and convert it into well-structured Markdown format. Use headings, lists, bold, italics, and other Markdown features as appropriate to best represent the structure and intent of the original text. Return only the Markdown formatted text, without any additional explanations or commentary. The original text is:\n\n---\n\n${selectedText}`;
-                    const response = await ai.models.generateContent({
-                        model: 'gemini-2.5-flash',
-                        contents: prompt
-                    });
-                    const formattedText = response.text || '';
+                    const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+                    const formattedText = response.text.trim();
                     
                     const newContent = `${textarea.value.substring(0, start)}${formattedText}${textarea.value.substring(end)}`;
                     setContent(newContent);
@@ -298,7 +295,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
         return () => {
             textarea.removeEventListener('keydown', handleKeyDown);
         };
-    }, [settings.hotkeys.formatToMarkdown, content]);
+    }, [settings.hotkeys.formatToMarkdown, content, settings.enableAiAssistant]);
 
     useEffect(() => {
         const previewEl = previewRef.current;
@@ -407,7 +404,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
     };
 
     const handleAiAction = async (action: 'summarize' | 'tag' | 'link') => {
-        if (!content.trim()) return;
+        if (!content.trim() || !settings.enableAiAssistant) return;
         setIsAiActionLoading(true);
         setAiActionError(null);
         setIsAiMenuOpen(false);
@@ -415,51 +412,49 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
             let prompt = '';
-            
+            let updateFn: (response: string) => void;
+
             switch (action) {
                 case 'summarize':
                     prompt = `Сделай краткое summary (одно-два предложения) для следующего текста:\n\n---\n\n${content}`;
-                    const summarizeResponse = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-                    setContent(`> **Summary:** ${summarizeResponse.text}\n\n---\n\n${content}`);
+                    updateFn = (summary) => {
+                        const newContent = `> **Summary:** ${summary}\n\n---\n\n${content}`;
+                        setContent(newContent);
+                    };
                     break;
                 case 'tag':
                     prompt = `Проанализируй следующий текст и предложи от 3 до 5 релевантных тегов. Ответь только в формате JSON-массива строк. Например: ["продуктивность", "идеи"].\n\n---\n\n${title}\n${content}`;
-                    const tagResponse = await ai.models.generateContent({
-                        model: 'gemini-2.5-flash',
-                        contents: prompt,
-                        config: { 
-                            responseMimeType: 'application/json',
-                            responseSchema: {
-                                type: Type.ARRAY,
-                                items: { type: Type.STRING }
+                    updateFn = (response) => {
+                        let newTags: string[] = [];
+                        try {
+                            const cleanedResponse = response.replace(/```json/g, '').replace(/```/g, '').trim();
+                            const parsed = JSON.parse(cleanedResponse);
+                            if (Array.isArray(parsed)) {
+                                // FIX: Change 'any' to 'unknown' to ensure type safety with the type guard.
+                                newTags = parsed.filter((item: unknown): item is string => typeof item === 'string');
+                            } else {
+                                throw new Error("Invalid tag format from AI");
                             }
+                        } catch (e) {
+                            console.error("Failed to parse tags JSON:", e);
+                            newTags = response.split(',').map(t => t.trim().replace(/["'`]/g, ''));
                         }
-                    });
-                    
-                    let newTags: string[] = [];
-                    try {
-                        const parsed = JSON.parse(tagResponse.text.trim());
-                        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-                            // FIX: Cast 'parsed' to string[] after validation to resolve TypeScript error.
-                            newTags = parsed as string[];
-                        } else {
-                            throw new Error("Parsed JSON is not an array of strings.");
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse tags JSON:", e);
-                        newTags = tagResponse.text.split(',').map(t => t.trim().replace(/["'`]/g, ''));
-                    }
-                    const currentTags = new Set(note.tags || []);
-                    newTags.forEach(tag => currentTags.add(tag.toLowerCase().replace(/\s/g, '-')));
-                    handleTagsChange(Array.from(currentTags));
+                        const currentTags = new Set(note.tags || []);
+                        newTags.forEach(tag => currentTags.add(tag.toLowerCase().replace(/\s/g, '-')));
+                        handleTagsChange(Array.from(currentTags));
+                    };
                     break;
                  case 'link':
                     const otherNoteTitles = allNotes.filter(n => n.id !== note.id && n.title.trim()).map(n => n.title);
                     prompt = `Проанализируй текст заметки. Найди в нем упоминания следующих названий других заметок: [${otherNoteTitles.join(', ')}]. Если найдешь точное совпадение, оберни его в [[двойные квадратные скобки]]. Не создавай ссылки, если не уверен. Верни только измененный текст заметки, без каких-либо объяснений. Исходный текст:\n\n---\n\n${content}`;
-                    const linkResponse = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
-                    setContent(linkResponse.text);
+                    updateFn = (newContent) => {
+                        setContent(newContent);
+                    };
                     break;
             }
+            
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            updateFn(response.text);
 
         } catch (error) {
             console.error(`Error performing AI action "${action}":`, error);
@@ -572,35 +567,37 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
                         className="text-xl font-bold bg-transparent outline-none w-full text-text-primary"
                     />
                     <div className="flex items-center gap-1">
-                        <div className="relative group" ref={aiMenuRef}>
-                            <button
-                                onClick={() => setIsAiMenuOpen(p => !p)}
-                                disabled={isAiActionLoading || isFormatting || !content}
-                                className="p-2 text-text-secondary hover:text-neon-purple hover:bg-neon-purple/10 rounded-full disabled:opacity-50"
-                                title="AI-действия"
-                            >
-                                {isAiActionLoading || isFormatting ? <div className="w-5 h-5 border-2 border-text-secondary border-t-neon-purple rounded-full animate-spin"></div> : <SparklesIcon className="w-5 h-5"/>}
-                            </button>
-                             {settings.showHotkeyTooltips && settings.hotkeys.formatToMarkdown && (
-                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-nowrap bg-secondary text-text-primary text-xs px-2 py-1 rounded-md border border-border-color shadow-lg z-50">
-                                    Форматировать: {settings.hotkeys.formatToMarkdown.replace(/\+/g, ' + ').toUpperCase()}
-                                </span>
-                            )}
-                            <AnimatePresence>
-                            {isAiMenuOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: 10 }}
-                                    className="absolute top-full right-0 mt-2 w-48 bg-secondary border border-border-color rounded-xl shadow-lg p-2 z-50"
+                        {settings.enableAiAssistant && (
+                            <div className="relative group" ref={aiMenuRef}>
+                                <button
+                                    onClick={() => setIsAiMenuOpen(p => !p)}
+                                    disabled={isAiActionLoading || isFormatting || !content}
+                                    className="p-2 text-text-secondary hover:text-neon-purple hover:bg-neon-purple/10 rounded-full disabled:opacity-50"
+                                    title="AI-действия"
                                 >
-                                    <button onClick={() => handleAiAction('link')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md text-text-primary hover:bg-accent"><LinkIcon className="w-4 h-4 text-highlight"/>Авто-связывание</button>
-                                    <button onClick={() => handleAiAction('summarize')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md text-text-primary hover:bg-accent"><DocumentTextIcon className="w-4 h-4 text-highlight"/>Сделать Summary</button>
-                                    <button onClick={() => handleAiAction('tag')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md text-text-primary hover:bg-accent"><TagIcon className="w-4 h-4 text-highlight"/>Сгенерировать теги</button>
-                                </motion.div>
-                            )}
-                            </AnimatePresence>
-                        </div>
+                                    {isAiActionLoading || isFormatting ? <div className="w-5 h-5 border-2 border-text-secondary border-t-neon-purple rounded-full animate-spin"></div> : <SparklesIcon className="w-5 h-5"/>}
+                                </button>
+                                 {settings.showHotkeyTooltips && settings.hotkeys.formatToMarkdown && (
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-nowrap bg-secondary text-text-primary text-xs px-2 py-1 rounded-md border border-border-color shadow-lg z-50">
+                                        Форматировать: {settings.hotkeys.formatToMarkdown.replace(/\+/g, ' + ').toUpperCase()}
+                                    </span>
+                                )}
+                                <AnimatePresence>
+                                {isAiMenuOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="absolute top-full right-0 mt-2 w-48 bg-secondary border border-border-color rounded-xl shadow-lg p-2 z-50"
+                                    >
+                                        <button onClick={() => handleAiAction('link')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md text-text-primary hover:bg-accent"><LinkIcon className="w-4 h-4 text-highlight"/>Авто-связывание</button>
+                                        <button onClick={() => handleAiAction('summarize')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md text-text-primary hover:bg-accent"><DocumentTextIcon className="w-4 h-4 text-highlight"/>Сделать Summary</button>
+                                        <button onClick={() => handleAiAction('tag')} className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md text-text-primary hover:bg-accent"><TagIcon className="w-4 h-4 text-highlight"/>Сгенерировать теги</button>
+                                    </motion.div>
+                                )}
+                                </AnimatePresence>
+                            </div>
+                        )}
                         <button onClick={onNavigateToGraph} className="p-2 text-text-secondary hover:text-neon-purple hover:bg-neon-purple/10 rounded-full" title="Открыть 'Звёздное небо'">
                             <SparklesIcon className="w-5 h-5"/>
                         </button>
@@ -667,3 +664,5 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete
         </div>
     );
 };
+
+export default NoteEditor;

@@ -18,9 +18,10 @@ interface KanbanBoardProps {
   isMobile: boolean;
   allAttachments: Attachment[];
   onOpenAiWithContext: (context: any) => void;
+  enableAi: boolean;
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projects, board, onUpdateTaskStatus, onStartPomodoro, onDeleteRequest, onEditRequest, onUpdateTask, onDuplicateTask, isMobile, allAttachments, onOpenAiWithContext }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projects, board, onUpdateTaskStatus, onStartPomodoro, onDeleteRequest, onEditRequest, onUpdateTask, onDuplicateTask, isMobile, allAttachments, onOpenAiWithContext, enableAi }) => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<Record<string, SortOption>>({});
   const [activeColumn, setActiveColumn] = useState<string | null>(board?.columns[0] || null);
@@ -146,7 +147,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projects, board, onUpd
                         <div className="space-y-3">
                             {sortTasks(tasks.filter(task => task.status === activeColumn), sortConfig[activeColumn] || 'default').map(task => {
                                 const taskProject = projects.find(p => p.id === task.projectId);
-                                return <TaskCard key={task.id} task={task} boardColumns={board.columns} onDragStart={() => {}} isDragging={false} onStartPomodoro={() => onStartPomodoro(task)} onDeleteRequest={() => onDeleteRequest(task)} onEditRequest={() => onEditRequest(task)} onUpdateTask={onUpdateTask} onDuplicateTask={() => onDuplicateTask(task.id)} projectColor={taskProject?.color} projectEmoji={taskProject?.emoji} isMobile={isMobile} allAttachments={allAttachments} onOpenAiWithContext={onOpenAiWithContext} />;
+                                return <TaskCard key={task.id} task={task} boardColumns={board.columns} onDragStart={() => {}} isDragging={false} onStartPomodoro={() => onStartPomodoro(task)} onDeleteRequest={() => onDeleteRequest(task)} onEditRequest={() => onEditRequest(task)} onUpdateTask={onUpdateTask} onDuplicateTask={() => onDuplicateTask(task.id)} projectColor={taskProject?.color} projectEmoji={taskProject?.emoji} isMobile={isMobile} allAttachments={allAttachments} onOpenAiWithContext={onOpenAiWithContext} enableAi={enableAi} />;
                             })}
                         </div>
                     )}
@@ -190,6 +191,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projects, board, onUpd
                     isMobile={isMobile}
                     allAttachments={allAttachments}
                     onOpenAiWithContext={onOpenAiWithContext}
+                    enableAi={enableAi}
                   />
                 )
             })}

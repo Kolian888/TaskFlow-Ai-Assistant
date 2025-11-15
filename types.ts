@@ -69,7 +69,6 @@ export interface Project {
   tags?: string[];
   attachmentIds?: string[];
   archived?: boolean;
-// FIX: Add missing goalId property to Project interface.
   goalId?: string | null;
 }
 
@@ -205,7 +204,6 @@ export interface Hotkeys {
     viewMindMap: string;
     viewKnowledge: string;
     viewGraph: string;
-    // FIX: Added missing hotkey definitions for Calendar and Goals views.
     viewCalendar: string;
     viewGoals: string;
     quickAddTask: string;
@@ -224,6 +222,6 @@ export interface Settings {
     enableTts: boolean;
     selectedVoiceURI: string | null;
     showHotkeyTooltips: boolean;
-// FIX: Add missing 'theme' property to Settings interface.
     theme: string;
+    enableAiAssistant: boolean;
 }

@@ -18,9 +18,10 @@ interface TaskCardProps {
   isMobile?: boolean;
   allAttachments: Attachment[];
   onOpenAiWithContext: (context: any) => void;
+  enableAi: boolean;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, isDragging, onStartPomodoro, onDeleteRequest, onEditRequest, onUpdateTask, onDuplicateTask, projectColor, projectEmoji, isMobile = false, allAttachments, onOpenAiWithContext }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, isDragging, onStartPomodoro, onDeleteRequest, onEditRequest, onUpdateTask, onDuplicateTask, projectColor, projectEmoji, isMobile = false, allAttachments, onOpenAiWithContext, enableAi }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -210,6 +211,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
                     <button onClick={() => handleMove('right')} disabled={!canMoveRight} className="w-6 h-6 flex items-center justify-center bg-accent text-text-secondary rounded-md hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" aria-label={`Переместить задачу вправо`}>
                         <ChevronRightIcon className="w-3.5 h-3.5" />
                     </button>
+                    {enableAi && <button onClick={() => onOpenAiWithContext(task)} className="w-6 h-6 flex items-center justify-center text-text-secondary rounded-md hover:bg-white/10 hover:text-white transition-colors" aria-label={`AI-помощник для ${task.title}`}>
+                        <MicrophoneIcon className="w-3.5 h-3.5" />
+                    </button>}
                     <div className="relative" ref={menuRef}>
                         <button onClick={() => setIsMenuOpen(prev => !prev)} className="w-6 h-6 flex items-center justify-center text-text-secondary rounded-md hover:bg-white/10 hover:text-white transition-colors" aria-label={`Действия с задачей ${task.title}`}>
                             <DotsVerticalIcon className="w-3.5 h-3.5" />
@@ -391,6 +395,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, boardColumns, onDragStart, is
             <div className="flex items-center gap-1">
                 <button onClick={onStartPomodoro} className="w-8 h-8 flex items-center justify-center bg-highlight/20 text-highlight rounded-lg hover:bg-highlight/30 transition-colors" aria-label={`Начать Помодоро для ${task.title}`}><PlayIcon className="w-5 h-5" /></button>
                 
+                {enableAi && <button 
+                    onClick={() => onOpenAiWithContext(task)} 
+                    className="w-8 h-8 flex items-center justify-center text-text-secondary rounded-lg hover:bg-white/10 hover:text-white transition-colors" 
+                    aria-label={`AI-помощник для ${task.title}`}
+                >
+                    <MicrophoneIcon className="w-5 h-5" />
+                </button>}
+
                 <div className="relative" ref={menuRef}>
                     <button onClick={() => setIsMenuOpen(prev => !prev)} className="w-8 h-8 flex items-center justify-center text-text-secondary rounded-lg hover:bg-white/10 hover:text-white transition-colors" aria-label={`Действия с задачей ${task.title}`}>
                         <DotsVerticalIcon className="w-5 h-5" />

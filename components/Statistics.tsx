@@ -5,6 +5,7 @@ import { Task, Project, PlayerStats, TaskPriority } from '../types';
 import { ChartBarIcon, SparklesIcon } from './Icons';
 // @ts-ignore
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
+import { GoogleGenAI } from '@google/genai';
 
 
 const ProgressBar: React.FC<{ percentage: number; colorClass?: string; }> = ({ percentage, colorClass = 'bg-highlight' }) => (
@@ -25,9 +26,10 @@ interface StatisticsProps {
     projects: Project[];
     playerStats: PlayerStats;
     onGenerateReport: () => Promise<string>;
+    enableAi: boolean;
 }
 
-const Statistics: React.FC<StatisticsProps> = ({ tasks, projects, playerStats, onGenerateReport }) => {
+const Statistics: React.FC<StatisticsProps> = ({ tasks, projects, playerStats, onGenerateReport, enableAi }) => {
     const [aiReport, setAiReport] = useState<string | null>(null);
     const [isReportLoading, setIsReportLoading] = useState(false);
     const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
@@ -35,7 +37,6 @@ const Statistics: React.FC<StatisticsProps> = ({ tasks, projects, playerStats, o
     const handleGenerateReport = async () => {
         setIsReportLoading(true);
         setAiReport(null);
-        setIsQuotaExceeded(false);
         const report = await onGenerateReport();
         if (report.includes('Вы превысили лимит запросов')) {
             setIsQuotaExceeded(true);
@@ -138,22 +139,24 @@ const Statistics: React.FC<StatisticsProps> = ({ tasks, projects, playerStats, o
                 <p className="text-text-secondary">Обзор вашей продуктивности.</p>
             </header>
             
-            <div className="bg-primary p-5 rounded-xl border border-border-color shadow-inner-soft">
-                <h3 className="text-lg font-bold text-text-secondary mb-3">Отчет от ИИ-Ментора</h3>
-                {aiReport ? (
-                     <div className="prose prose-invert prose-sm max-w-none text-text-primary" dangerouslySetInnerHTML={{ __html: marked.parse(aiReport) }}></div>
-                ) : (
-                    <button onClick={handleGenerateReport} disabled={isReportLoading || isQuotaExceeded} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-purple/80 text-white font-bold rounded-xl hover:bg-neon-purple transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
-                        <SparklesIcon className="w-5 h-5"/>
-                        {isReportLoading ? 'Анализирую данные...' : 'Сгенерировать отчет'}
-                    </button>
-                )}
-                 {isQuotaExceeded && (
-                    <p className="text-center text-brand-yellow text-xs mt-2">
-                        Достигнут лимит запросов для генерации отчетов. Попробуйте позже.
-                    </p>
-                )}
-            </div>
+            {enableAi && (
+                <div className="bg-primary p-5 rounded-xl border border-border-color shadow-inner-soft">
+                    <h3 className="text-lg font-bold text-text-secondary mb-3">Отчет от ИИ-Ментора</h3>
+                    {aiReport ? (
+                         <div className="prose prose-invert prose-sm max-w-none text-text-primary" dangerouslySetInnerHTML={{ __html: marked.parse(aiReport) }}></div>
+                    ) : (
+                        <button onClick={handleGenerateReport} disabled={isReportLoading || isQuotaExceeded} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-purple/80 text-white font-bold rounded-xl hover:bg-neon-purple transition-opacity disabled:opacity-50 disabled:cursor-not-allowed">
+                            <SparklesIcon className="w-5 h-5"/>
+                            {isReportLoading ? 'Анализирую данные...' : 'Сгенерировать отчет'}
+                        </button>
+                    )}
+                     {isQuotaExceeded && !aiReport && (
+                        <p className="text-center text-brand-yellow text-xs mt-2">
+                            Достигнут лимит запросов для генерации отчетов. Попробуйте позже.
+                        </p>
+                    )}
+                </div>
+            )}
             
             {productivityDynamics && (
                 <div className="bg-primary p-5 rounded-xl border border-border-color shadow-inner-soft">
