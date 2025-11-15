@@ -195,6 +195,9 @@ export interface Hotkeys {
     viewMindMap: string;
     viewKnowledge: string;
     viewGraph: string;
+    // FIX: Added missing hotkey definitions for Calendar and Goals views.
+    viewCalendar: string;
+    viewGoals: string;
     quickAddTask: string;
     quickAddNote: string;
     quickAddProject: string;

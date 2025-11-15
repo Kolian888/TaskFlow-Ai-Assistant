@@ -431,7 +431,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
                             // FIX: Safely parse and filter AI-generated tags to ensure they are always an array of strings.
                             if (Array.isArray(parsed)) {
 // FIX: Change 'unknown' to 'any' to match the type of items in 'parsed' (any[]), resolving the type mismatch error.
-                                newTags = parsed.filter((item: any): item is string => typeof item === 'string');
+// The type of `item` is changed from `any` to `unknown` for better type safety. The type predicate `item is string` correctly narrows `unknown` to `string`.
+                                newTags = parsed.filter((item: unknown): item is string => typeof item === 'string');
                             } else {
                                 throw new Error("Invalid tag format from AI");
                             }
@@ -614,4 +615,53 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, allNo
                     <AnimatePresence>
                         {linkSuggestions.active && (
                             <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.9
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                style={{ top: linkSuggestions.position.top, left: linkSuggestions.position.left }}
+                                className="absolute z-50 bg-secondary border border-border-color rounded-lg shadow-lg w-72 flex flex-col overflow-hidden"
+                            >
+                                <div ref={suggestionListRef} className="max-h-48 overflow-y-auto">
+                                    {linkSuggestions.suggestions.length > 0 ? linkSuggestions.suggestions.map((s, i) => (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => handleSelectSuggestion(s.title)}
+                                            className={`w-full text-left px-3 py-2 text-sm truncate ${i === linkSuggestions.selectedIndex ? 'bg-highlight text-primary' : 'text-text-primary hover:bg-accent'}`}
+                                        >
+                                            {s.title}
+                                        </button>
+                                    )) : <div className="px-3 py-2 text-sm text-text-secondary">Идеи не найдены...</div>}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                    <textarea
+                        ref={textareaRef}
+                        value={content}
+                        onChange={e => {
+                            setContent(e.target.value);
+                            checkSuggestions(e.currentTarget);
+                        }}
+                        onKeyUp={e => checkSuggestions(e.currentTarget)}
+                        onClick={e => checkSuggestions(e.currentTarget)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Начни писать здесь... Используй [[Название идеи]], чтобы создавать связи!"
+                        className="w-full h-full p-6 bg-transparent outline-none resize-none leading-relaxed text-text-primary placeholder:text-text-secondary/50"
+                    />
+                </div>
+                <div className="w-1/2 h-full border-l border-border-color flex flex-col">
+                     <div className="p-2 border-b border-border-color text-center text-xs font-bold text-text-secondary uppercase flex-shrink-0">
+                        Предпросмотр
+                    </div>
+                    <div
+                        ref={previewRef}
+                        className="prose prose-sm prose-invert max-w-none w-full flex-grow p-6 overflow-y-auto leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: processedHtml }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default NoteEditor;
