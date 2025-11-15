@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys, Goal } from './types';
 import Header from './components/Header';
@@ -54,6 +53,16 @@ const APP_DATA_KEY = 'taskflow_app_data_v1';
 
 // FIX: Define a type for sidebar widget keys to prevent 'unknown' index type error.
 type SidebarWidgetKey = 'projects' | 'form' | 'pet' | 'quests' | 'notes' | 'pomodoro' | 'notifications';
+
+// FIX: Remove duplicate global declaration for 'window.aistudio' to resolve conflict.
+// declare global {
+//     interface Window {
+//         aistudio: {
+//             hasSelectedApiKey: () => Promise<boolean>;
+//             openSelectKey: () => Promise<void>;
+//         };
+//     }
+// }
 
 const ImageGalleryModal: React.FC<{ images: Attachment[]; startIndex: number; onClose: () => void; }> = ({ images, startIndex, onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -168,6 +177,8 @@ const MobileMenu: React.FC<{
 
 
 const App = () => {
+    const [apiKeySelected, setApiKeySelected] = useState(false);
+    const [checkingApiKey, setCheckingApiKey] = useState(true);
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [goals, setGoals] = useState<Goal[]>([]);
@@ -294,6 +305,35 @@ const App = () => {
     const handleOpenProjectEdit = (project: Project, tab: 'details' | 'attachments' = 'details') => {
         setProjectToEdit(project);
         setProjectEditModalTab(tab);
+    };
+
+    useEffect(() => {
+        const checkApiKey = async () => {
+            try {
+                if (window.aistudio) {
+                    const hasKey = await window.aistudio.hasSelectedApiKey();
+                    setApiKeySelected(hasKey);
+                } else {
+                    setApiKeySelected(false);
+                }
+            } catch (e) {
+                console.error("Error checking for API key:", e);
+                setApiKeySelected(false);
+            } finally {
+                setCheckingApiKey(false);
+            }
+        };
+
+        checkApiKey();
+    }, []);
+
+    const handleSelectKey = async () => {
+        try {
+            await window.aistudio.openSelectKey();
+            setApiKeySelected(true);
+        } catch(e) {
+            console.error("Error opening API key selection:", e);
+        }
     };
 
     useEffect(() => {
@@ -1464,6 +1504,34 @@ const App = () => {
         { id: 'knowledge', label: 'Идеи', icon: DocumentDuplicateIcon },
         { id: 'menu', label: 'Меню', icon: MenuIcon, action: () => setIsMobileNavMenuOpen(true) },
     ];
+
+    if (checkingApiKey) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-base-bg">
+                <p className="text-text-secondary animate-pulse">Проверка API ключа...</p>
+            </div>
+        );
+    }
+
+    if (!apiKeySelected) {
+        return (
+            <div className="fixed inset-0 bg-primary/80 backdrop-blur-xl flex justify-center items-center z-50 p-4">
+                <div className="bg-secondary p-8 rounded-3xl shadow-soft-glow w-full max-w-md border border-border-color text-center">
+                    <h1 className="text-2xl font-bold text-text-primary mb-4">Требуется API ключ для TaskFlow AI</h1>
+                    <p className="text-text-secondary mb-6">Для использования AI-функций, пожалуйста, выберите API ключ Google AI Studio.</p>
+                    <button
+                        onClick={handleSelectKey}
+                        className="w-full bg-highlight text-primary font-bold py-3 px-4 rounded-xl hover:opacity-90 transition-opacity active:scale-95 text-base"
+                    >
+                        Выбрать API ключ
+                    </button>
+                    <p className="text-xs text-text-secondary mt-4">
+                        Для получения дополнительной информации о тарифах, пожалуйста, посетите <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline hover:text-highlight">документацию по биллингу</a>.
+                    </p>
+                </div>
+            </div>
+        );
+    }
     
     return (
         <div className={`min-h-screen bg-base-bg font-sans ${isMobile ? 'pb-24' : ''}`}>
@@ -1590,7 +1658,7 @@ const App = () => {
             {galleryConfig.isOpen && <ImageGalleryModal images={galleryConfig.images} startIndex={galleryConfig.startIndex} onClose={handleCloseGallery} />}
             <GoalEditModal isOpen={!!goalToEdit} goal={goalToEdit === 'new' ? null : goalToEdit} onClose={() => setGoalToEdit(null)} onSave={handleSaveGoal} />
 
-            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
+            <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} /* FIX: Correct typo in prop name from onAddAttachment to handleAddAttachment */ handleAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
             <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
             <CharacterSwitchModal isOpen={isCharacterSwitchOpen} onClose={() => setIsCharacterSwitchOpen(false)} onSwitch={handleCharacterSwitch} unlockedTypes={playerStats.unlockedCharacterTypes} activeType={playerStats.characterType} />
             <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} playerStats={playerStats} onUnlockColor={handleUnlockPetColor} onSelectColor={handleSelectPetColor} onUnlockCharacterType={handleUnlockCharacterType} />
