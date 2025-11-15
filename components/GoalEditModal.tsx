@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Goal } from '../types';
-import { XIcon } from './Icons';
 
 interface GoalEditModalProps {
     isOpen: boolean;
-    goal: Goal | null;
+    goal: Goal | 'new' | null;
     onClose: () => void;
     onSave: (name: string, description: string, targetDate: string, goalId?: string) => void;
 }
@@ -15,7 +15,7 @@ const GoalEditModal: React.FC<GoalEditModalProps> = ({ isOpen, goal, onClose, on
     const [targetDate, setTargetDate] = useState('');
 
     useEffect(() => {
-        if (goal) {
+        if (goal && goal !== 'new') {
             setName(goal.name);
             setDescription(goal.description || '');
             setTargetDate(goal.targetDate || '');
@@ -31,7 +31,7 @@ const GoalEditModal: React.FC<GoalEditModalProps> = ({ isOpen, goal, onClose, on
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (name.trim()) {
-            onSave(name.trim(), description.trim(), targetDate, goal?.id);
+            onSave(name.trim(), description.trim(), targetDate, (goal && goal !== 'new') ? goal.id : undefined);
             onClose();
         }
     };
@@ -41,7 +41,7 @@ const GoalEditModal: React.FC<GoalEditModalProps> = ({ isOpen, goal, onClose, on
     return (
         <div className="fixed inset-0 bg-primary/80 backdrop-blur-xl flex justify-center items-center z-50 p-4" onClick={onClose}>
             <div className="bg-secondary p-6 rounded-3xl shadow-soft-glow w-full max-w-lg border border-border-color" onClick={e => e.stopPropagation()}>
-                <h2 className="text-xl font-bold text-text-primary mb-6">{goal ? 'Редактировать цель' : 'Новая цель'}</h2>
+                <h2 className="text-xl font-bold text-text-primary mb-6">{goal === 'new' ? 'Новая цель' : 'Редактировать цель'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Название цели" className={inputClasses} autoFocus required />
                     <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Описание (необязательно)" rows={4} className={inputClasses} />
@@ -51,7 +51,7 @@ const GoalEditModal: React.FC<GoalEditModalProps> = ({ isOpen, goal, onClose, on
                     </div>
                      <div className="flex justify-end gap-4 mt-4">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-accent rounded-lg font-semibold">Отмена</button>
-                        <button type="submit" className="px-4 py-2 bg-highlight text-primary font-semibold rounded-lg">{goal ? 'Сохранить' : 'Создать'}</button>
+                        <button type="submit" className="px-4 py-2 bg-highlight text-primary font-semibold rounded-lg">{goal === 'new' ? 'Создать' : 'Сохранить'}</button>
                      </div>
                 </form>
             </div>

@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys } from './types';
+import { Project, Task, PlayerStats, TaskPriority, Subtask, Quest, Attachment, AttachmentType, CharacterType, Note, NoteFolder, Rank, Board, Habit, UserProfile, MindMap, MindMapNode, Settings, Hotkeys, Goal } from './types';
 import Header from './components/Header';
 import ProjectManager from './components/ProjectManager';
 import KanbanBoard from './components/KanbanBoard';
@@ -47,6 +47,8 @@ import GraphView from './components/GraphView';
 import SettingsModal from './components/SettingsModal';
 import GlobalSearchModal from './components/GlobalSearchModal';
 import CalendarView from './components/CalendarView';
+import GoalsView from './components/GoalsView';
+import GoalEditModal from './components/GoalEditModal';
 
 const APP_DATA_KEY = 'taskflow_app_data_v1';
 
@@ -165,11 +167,10 @@ const MobileMenu: React.FC<{
 };
 
 
-// FIX: Removed React.FC type annotation to allow TypeScript to correctly infer
-// the return type of the component, resolving a misleading type error.
 const App = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [goals, setGoals] = useState<Goal[]>([]);
     const [boards, setBoards] = useState<Board[]>([]);
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [notes, setNotes] = useState<Note[]>([]);
@@ -187,7 +188,7 @@ const App = () => {
     const [projectFilter, setProjectFilter] = useState<'all' | string>('all');
     const [tagFilter, setTagFilter] = useState<'all' | string>('all');
     const [dailyQuests, setDailyQuests] = useState<Quest[]>([]);
-    type ActiveView = 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'library' | 'notes' | 'quests' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar';
+    type ActiveView = 'dashboard' | 'kanban' | 'stats' | 'achievements' | 'library' | 'notes' | 'quests' | 'habits' | 'para' | 'pomodoro' | 'mindmap' | 'knowledge' | 'graph' | 'calendar' | 'goals';
     const [activeView, setActiveView] = useState<ActiveView>('dashboard');
     
     const [itemToDelete, setItemToDelete] = useState<{ type: 'task' | 'project' | 'board', id: string, name: string } | null>(null);
@@ -196,6 +197,7 @@ const App = () => {
     const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
     const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
     const [boardToEdit, setBoardToEdit] = useState<Board | 'new' | null>(null);
+    const [goalToEdit, setGoalToEdit] = useState<Goal | 'new' | null>(null);
     
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
     const [notifiedTaskIds, setNotifiedTaskIds] = useState<Set<string>>(new Set());
@@ -241,7 +243,6 @@ const App = () => {
                 viewKnowledge: 'k',
                 viewGraph: 'g',
                 viewCalendar: 'v',
-// FIX: Add missing 'viewGoals' property to satisfy the Hotkeys interface.
                 viewGoals: 'alt+g',
                 quickAddTask: 'c',
                 quickAddNote: 'n',
@@ -313,6 +314,7 @@ const App = () => {
           const data = JSON.parse(savedData);
           setProjects(data.projects || []);
           setTasks(data.tasks || []);
+          setGoals(data.goals || []);
           setBoards(data.boards || [{ id: '1', name: 'Работа', columns: ['Бэклог', 'В процессе', 'Готово'], color: '#4E95F2' }, { id: '2', name: 'Личное', columns: ['Планы', 'В процессе', 'Сделано'], color: '#A371F7' }]);
           setAttachments(data.attachments || []);
           setNotes(data.notes || []);
@@ -339,7 +341,7 @@ const App = () => {
     useEffect(() => {
       try {
         const appData = {
-          projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps,
+          projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps,
           playerStats, pomodoroSettings, activeBoardId,
           notifiedTaskIds: Array.from(notifiedTaskIds),
           sidebarOrder,
@@ -348,7 +350,7 @@ const App = () => {
       } catch (e) {
         console.error("Failed to save data to localStorage", e);
       }
-    }, [projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps, playerStats, pomodoroSettings, activeBoardId, notifiedTaskIds, sidebarOrder]);
+    }, [projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps, playerStats, pomodoroSettings, activeBoardId, notifiedTaskIds, sidebarOrder]);
 
     const updateQuestProgress = useCallback((questId: string, amount = 1) => {
         setDailyQuests(prevQuests => {
@@ -431,7 +433,7 @@ const App = () => {
     const handleExportData = useCallback(() => {
         try {
             const appData = {
-              projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps,
+              projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps,
               playerStats, pomodoroSettings, activeBoardId,
               notifiedTaskIds: Array.from(notifiedTaskIds),
               sidebarOrder,
@@ -452,7 +454,7 @@ const App = () => {
             alert("Не удалось экспортировать данные.");
         }
     }, [
-        projects, tasks, boards, attachments, notes, noteFolders, habits, mindMaps,
+        projects, tasks, goals, boards, attachments, notes, noteFolders, habits, mindMaps,
         playerStats, pomodoroSettings, activeBoardId, notifiedTaskIds, sidebarOrder
     ]);
 
@@ -472,6 +474,7 @@ const App = () => {
                     if (data.projects && data.tasks && data.boards) {
                         setProjects(data.projects || []);
                         setTasks(data.tasks || []);
+                        setGoals(data.goals || []);
                         setBoards(data.boards || []);
                         setAttachments(data.attachments || []);
                         setNotes(data.notes || []);
@@ -546,6 +549,7 @@ const App = () => {
                 viewKnowledge: () => setActiveView('knowledge'),
                 viewGraph: () => setActiveView('graph'),
                 viewCalendar: () => setActiveView('calendar'),
+                viewGoals: () => setActiveView('goals'),
                 quickAddTask: () => setIsTaskFormModalOpen(true),
                 quickAddNote: () => setIsQuickNoteOpen(true),
                 quickAddProject: () => setIsQuickProjectOpen(true),
@@ -585,7 +589,6 @@ const App = () => {
     
     const doneColumnNames = useMemo(() => new Set(boards.flatMap(b => b.columns.slice(-1))), [boards]);
 
-    // FIX: Define missing variables used for filtering and data display.
     const activeBoard = useMemo(() => boards.find(b => b.id === activeBoardId), [boards, activeBoardId]);
     
     const projectsForBoard = useMemo(() => {
@@ -793,6 +796,32 @@ const App = () => {
     const handleDeleteTask = useCallback((taskId: string) => {
         setTasks(prev => prev.filter(t => t.id !== taskId));
     }, []);
+    
+    const handleAddGoal = useCallback((name: string, description: string, targetDate: string): Goal => {
+        const newGoal: Goal = { id: crypto.randomUUID(), name, description, targetDate, status: 'in-progress' };
+        setGoals(prev => [...prev, newGoal]);
+        return newGoal;
+    }, []);
+
+    const handleUpdateGoal = useCallback((updatedGoal: Goal) => {
+        setGoals(prev => prev.map(g => g.id === updatedGoal.id ? updatedGoal : g));
+    }, []);
+
+    const handleDeleteGoal = useCallback((goalId: string) => {
+        setGoals(prev => prev.filter(g => g.id !== goalId));
+        setProjects(prev => prev.map(p => p.goalId === goalId ? { ...p, goalId: null } : p));
+    }, []);
+
+    const handleSaveGoal = (name: string, description: string, targetDate: string, goalId?: string) => {
+        if (goalId) {
+            const originalGoal = goals.find(g => g.id === goalId);
+            if (originalGoal) {
+                handleUpdateGoal({ ...originalGoal, name, description, targetDate });
+            }
+        } else {
+            handleAddGoal(name, description, targetDate);
+        }
+    };
     
     const handleFeedPet = useCallback(() => true, []);
     const handlePlayWithPet = useCallback(() => true, []);
@@ -1407,7 +1436,7 @@ const App = () => {
                     />
                 </div>
             );
-
+            case 'goals': return <GoalsView goals={goals} projects={projects} tasks={tasks} onAddGoal={handleAddGoal} onUpdateGoal={handleUpdateGoal} onDeleteGoal={handleDeleteGoal} doneColumnNames={doneColumnNames} onEditRequest={setGoalToEdit}/>;
             case 'mindmap': return <MindMapView mindMaps={mindMaps} activeMapId={activeMindMapId} onSetActiveMapId={setActiveMindMapId} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} projects={projects} tasks={tasks} isGenerating={isGeneratingMindMap} onGenerateFromProject={handleGenerateMindMapFromProject} boards={boards} onConvertToTask={handleConvertToTask} onLinkTaskToNode={handleLinkTaskToNode} onConvertToProject={handleConvertToProject} onLinkProjectToNode={handleLinkProjectToNode} />;
             case 'knowledge': return <KnowledgeBaseView notes={notes} noteFolders={noteFolders} activeNoteId={activeKnowledgeNoteId} onSetActiveNoteId={setActiveKnowledgeNoteId} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddFolder={handleAddNoteFolder} onDeleteFolder={handleDeleteNoteFolder} onNavigateToGraph={() => setActiveView('graph')} voiceCommand={null} settings={settings} />;
             case 'graph': return <GraphView notes={notes} onNavigateToNote={handleNavigateToNote} />;
@@ -1415,7 +1444,6 @@ const App = () => {
         }
     };
     
-// FIX: Replaced `JSX.Element` with `React.ReactElement` to resolve "Cannot find namespace 'JSX'" error.
     const sidebarWidgets: Record<SidebarWidgetKey, { title: string, component: React.ReactElement }> = useMemo(() => ({
         projects: { title: 'Проекты', component: <ProjectManager projects={projectsForBoard} tasks={tasks} activeProjectId={activeProjectId} onAddProject={handleAddProject} onSelectProject={handleSelectProject} onEditRequest={handleOpenProjectEdit} onDeleteRequest={handleDeleteProjectRequest} onDuplicateRequest={handleDuplicateProject} allTags={allTags} boards={boards} activeBoardId={activeBoardId} allAttachments={attachments} /> },
         form: { title: 'Добавить задачу', component: <TaskForm onAddTask={(taskData) => handleAddTask(taskData as any)} projects={projects} activeProjectId={activeProjectId} /> },
@@ -1426,7 +1454,7 @@ const App = () => {
         notifications: { title: 'Уведомления', component: <Notifications permission={notificationPermission} onRequestPermission={handleRequestNotificationPermission} tasksDueToday={tasksDueToday} /> }
     }), [projectsForBoard, tasks, activeProjectId, handleAddProject, handleSelectProject, handleOpenProjectEdit, handleDeleteProjectRequest, handleDuplicateProject, allTags, boards, activeBoardId, playerStats, dailyQuests, notes, handleAddNote, handleUpdateNote, handleDeleteNote, activePomodoroTask, handlePomodoroComplete, pomodoroSettings, notificationPermission, handleRequestNotificationPermission, tasksDueToday, handleAddTask, isPomodoroActive, handleCancelPomodoro, attachments, pomodoroTimeRemaining, projects]);
 
-    const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph', 'calendar'].includes(activeView);
+    const isFullScreenView = ['dashboard', 'library', 'notes', 'quests', 'habits', 'para', 'stats', 'achievements', 'pomodoro', 'mindmap', 'knowledge', 'graph', 'calendar', 'goals'].includes(activeView);
 
     const isSidebarVisible = !isFullScreenView && !isMobile;
 
@@ -1555,11 +1583,12 @@ const App = () => {
                 activeProjectId={activeProjectId}
             />
             {itemToDelete && <ConfirmationModal title={`Подтвердите удаление`} message={`Вы уверены, что хотите удалить "${itemToDelete.name}"? Это действие нельзя будет отменить.`} onConfirm={handleConfirmDelete} onCancel={() => setItemToDelete(null)} confirmText="Удалить" confirmClass="bg-brand-red text-white" />}
-            {projectToEdit && <ProjectEditModal project={projectToEdit} initialTab={projectEditModalTab} onUpdate={handleUpdateProject} onCancel={() => setProjectToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} onOpenGallery={handleOpenGallery} />}
+            {projectToEdit && <ProjectEditModal project={projectToEdit} initialTab={projectEditModalTab} onUpdate={handleUpdateProject} onCancel={() => setProjectToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} onOpenGallery={handleOpenGallery} goals={goals} />}
             {taskToEdit && <TaskEditModal task={taskToEdit} onUpdate={(task) => handleUpdateTask(task)} onCancel={() => setTaskToEdit(null)} onAddAttachment={handleAddAttachment} onUnlinkAttachment={handleUnlinkAttachment} allAttachments={attachments} onOpenGallery={handleOpenGallery} />}
             {noteToEdit && <NoteEditModal note={noteToEdit} onUpdate={handleUpdateNote} onCancel={() => setNoteToEdit(null)} noteFolders={noteFolders} projects={projects} tasks={tasks} />}
             {boardToEdit && <BoardEditModal isOpen={!!boardToEdit} board={boardToEdit === 'new' ? null : boardToEdit} onClose={() => setBoardToEdit(null)} onSave={(name, boardId) => { if (boardId) { handleUpdateBoard(boardId, name); } else { handleAddBoard(name); } }} />}
             {galleryConfig.isOpen && <ImageGalleryModal images={galleryConfig.images} startIndex={galleryConfig.startIndex} onClose={handleCloseGallery} />}
+            <GoalEditModal isOpen={!!goalToEdit} goal={goalToEdit === 'new' ? null : goalToEdit} onClose={() => setGoalToEdit(null)} onSave={handleSaveGoal} />
 
             <AIAssistant isOpen={isAiAssistantOpen} setIsOpen={setIsAiAssistantOpen} projects={projects} tasks={tasks} notes={notes} noteFolders={noteFolders} boards={boards} mindMaps={mindMaps} activeProjectId={activeProjectId} activeMindMapId={activeMindMapId} playerStats={playerStats} userProfile={userProfile} onAddTask={(taskData, boardId) => handleAddTask(taskData as any, boardId)} onAddProject={handleAddProject} onUpdateTask={(task) => handleUpdateTask(task)} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onDeleteTask={handleDeleteTask} onStartPomodoro={handleStartPomodoro} onUpdateTaskStatus={handleUpdateTaskStatus} onAddAttachment={handleAddAttachment} onFeedPet={handleFeedPet} onPlayWithPet={handlePlayWithPet} onBathePet={handleBathePet} onTogglePetSleep={handleTogglePetSleep} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} onAddNoteFolder={handleAddNoteFolder} onUpdateNoteFolder={handleUpdateNoteFolder} onDeleteNoteFolder={handleDeleteNoteFolder} onAddMindMap={handleAddMindMap} onUpdateMindMap={handleUpdateMindMap} onDeleteMindMap={handleDeleteMindMap} onAddMindMapNode={handleAddMindMapNode} onUpdateMindMapNode={handleUpdateMindMapNode} onDeleteMindMapNode={handleDeleteMindMapNode} onGenerateMindMapFromProject={handleGenerateMindMapFromProject} onSpeak={speak} hotkeys={settings.hotkeys} settings={settings} onVoiceInput={handleVoiceInput} isListening={isListening} context={aiContext} onClearContext={() => setAiContext(null)} isMobile={isMobile} />
             <CharacterSelectionModal isOpen={isCharacterSelectionOpen} onSelect={handleSelectCharacter} />
